@@ -74,7 +74,7 @@ Hybrid retrieval pipeline per agent:
 - **Sparse**: FTS5 BM25
 - **Fusion**: Reciprocal Rank Fusion
 - **Temporal decay**: exponential scoring by recency
-- **Reranking**: MMR or cross-encoder
+- **Reranking**: MMR or LLM pointwise
 - Memory is written as Markdown files and indexed to SQLite
 
 ### Tools
