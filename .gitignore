@@ -21,3 +21,6 @@ memory/
 *.db
 *.db-shm
 *.db-wal
+api.txt
+de421.bsp
+hello_world.py
