@@ -1,0 +1,52 @@
+agents:
+  - id: default
+    tools_deny: [screenshot, computer_use, mouse_click, keyboard_type,
+                 keyboard_hotkey, open_app]
+    name: "Assistant"
+    system_prompt: |
+      You are a helpful AI assistant.
+    model:
+      primary: "openrouter/arcee-ai/trinity-large-preview:free"
+      fallbacks:
+        - "hosted_vllm/default"
+        - "openai/gpt-4o-mini"
+        - "gemini/gemini-2.5-flash"
+      temperature: 0.7
+      max_tokens: 4096
+
+  - id: telegram
+    tools_deny: [screenshot, computer_use, mouse_click, keyboard_type,
+                 keyboard_hotkey, open_app]
+    name: "Assistant"
+    system_prompt: |
+      You are a helpful AI assistant.
+    model:
+      primary: "openrouter/arcee-ai/trinity-large-preview:free"
+      fallbacks:
+        - "hosted_vllm/default"
+        - "openai/gpt-4o-mini"
+        - "gemini/gemini-2.5-flash"
+      temperature: 0.7
+      max_tokens: 4096
+
+mcp:
+  servers:
+    # - name: weather
+    #   command: /path/to/mcp_weather_server
+    #   args: []
+
+telegram:
+  token: "YOUR_TELEGRAM_BOT_TOKEN"
+  allowed_users: []          # e.g. [123456789]
+  default_agent_id: telegram
+
+skills_dir: "./skills"
+
+tts:
+  provider: edge
+  voice: zh-CN-XiaoxiaoNeural
+
+keys:
+  HOSTED_VLLM_API_BASE: "http://localhost:8000/v1"
+  OPENROUTER_API_KEY: "YOUR_OPENROUTER_API_KEY"
+  GROQ_API_KEY: "YOUR_GROQ_API_KEY"

@@ -1,0 +1,23 @@
+# Config with secrets
+agi.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Memory (personal data)
+memory/
+
+# Runtime
+*.db
+*.db-shm
+*.db-wal
