@@ -12,3 +12,11 @@ Fetch and summarize the given URL or text. Structure the output as:
 3. **Takeaway** — one actionable conclusion
 
 Be concise. Avoid filler. If the content is in a foreign language, summarize in the same language as the user's request.
+
+## Script
+
+For bulk summarization from a file list:
+
+```bash
+python3 {baseDir}/scripts/summarize.py --input urls.txt
+```

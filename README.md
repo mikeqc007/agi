@@ -98,12 +98,22 @@ Built-in tools registered at startup:
 
 ### Skills
 
-Skills are Markdown or YAML files with a prompt template. Loaded from:
+Skills are `SKILL.md` files that define instructions, workflows, or tool usage patterns. Each skill lives in its own subdirectory under `skills/`:
 
-1. `./skills/` (workspace)
-2. Managed skills dir (configurable)
+```
+skills/
+  summarize/
+    SKILL.md       ← instructions + any shell commands to run
+  deploy/
+    SKILL.md       ← can instruct the agent to run shell commands,
+                      call APIs, read/write files, etc.
+```
 
-Skills are invokable by name through the `skills` tool.
+The agent reads the `SKILL.md` at invocation time and follows its instructions — including executing shell commands, calling tools, or chaining multiple steps. Code execution happens through the agent's existing tool set (`shell`, `fs`, `web`, etc.).
+
+Skills are loaded from:
+1. `./skills/` (project-level)
+2. `memory/agents/<id>/skills/` (per-agent overrides)
 
 ### MCP
 
