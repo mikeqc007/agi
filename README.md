@@ -1,3 +1,15 @@
+## Background
+
+LLMs are powerful but fundamentally limited out of the box: they have no persistent memory 
+and no ability to act. This project is my attempt to solve both problems from first principles — 
+building a runtime that gives an LLM stable long-term memory via hybrid RAG retrieval, and 
+real-world execution capability via a unified tool and skill abstraction layer, independently
+aligned with Anthropic's MCP specification.
+
+The result is a fully autonomous agent runtime that can handle complex, long-horizon tasks 
+across sessions, delegate to subagents, run scheduled jobs, and operate across multiple 
+channels — all driven by a single ReAct loop at its core.
+
 # AGI — Autonomous Multi-Agent Runtime
 
 A Python-based autonomous agent runtime supporting multi-channel interaction, dynamic subagent spawning, scheduled task automation, persistent memory, and extensible tool/skill systems.
