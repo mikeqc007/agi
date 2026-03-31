@@ -17,7 +17,7 @@ def _config_dir(config: Optional[Path]) -> Path:
     import os
     if config:
         return Path(config).parent
-    env_path = os.environ.get("MINICLAW_CONFIG")
+    env_path = os.environ.get("AGI_CONFIG")
     if env_path:
         return Path(env_path).parent
     for candidate in (Path("agi.yaml"), Path("config.yaml")):

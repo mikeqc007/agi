@@ -84,17 +84,15 @@ Built-in tools registered at startup:
 | Tool | Description |
 |---|---|
 | `shell` | Execute shell commands (with approval gating) |
-| `fs` | Read/write/list files |
-| `web` | HTTP fetch, search |
-| `memory` | Read/write persistent memory |
+| `read_file` / `write_file` / `list_dir` | File system access |
+| `web_fetch` / `web_search` | HTTP fetch and DuckDuckGo search |
+| `remember` / `recall` / `forget` | Persistent memory read/write |
 | `browser` | Playwright-based browser automation |
-| `computer` | Screenshot, mouse, keyboard (pyautogui) |
-| `tts` | Text-to-speech via edge-tts |
+| `screenshot` / `computer_use` / `mouse_click` / `keyboard_type` | Desktop automation via pyautogui |
 | `say` | Announce action before execution |
-| `cron` | Manage scheduled tasks |
-| `spawn_subagent` | Delegate tasks to child agents |
-| `skills` | Invoke skills by name |
-| `mcp` | Call MCP server tools |
+| `cron_add` / `cron_list` / `cron_delete` | Manage scheduled tasks |
+| `spawn_agent` / `list_subagents` / `kill_subagent` | Delegate tasks to child agents |
+| `read_skill` | Load a skill's instructions at runtime |
 
 ### Skills
 
@@ -171,14 +169,17 @@ keys:
 ## Usage
 
 ```bash
-# Start runtime (Telegram + HTTP gateway)
+# Create default config
+agi init
+
+# Start runtime
 agi run
 
-# Interactive CLI session
-agi chat
+# Start with interactive CLI instead of Telegram
+agi run --cli
 
-# One-shot message
-agi message "summarize today's news"
+# Use a specific config file
+agi run --config /path/to/agi.yaml
 ```
 
 ## HTTP API
