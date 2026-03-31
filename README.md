@@ -11,9 +11,7 @@ Telegram / Discord / CLI / HTTP / OpenAI API
                     │
                MessageQueue
                     │
-                AgentLoop ── SubagentManager
-                    │     ── CronService
-                    │     ── HookManager
+                AgentLoop
           ┌─────────┼─────────┐
         Tools    Memory    Skills/MCP
 ```
