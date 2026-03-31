@@ -1,23 +1,65 @@
 # AGI — Autonomous Multi-Agent Runtime
 
-A Python-based autonomous agent runtime supporting multi-channel interaction, dynamic subagent spawning, scheduled task automation, persistent memory, and extensible tool/skill systems.
+A production-oriented multi-agent runtime for long-horizon task execution, recursive agent delegation, persistent memory, and tool-integrated automation.
+
+Unlike typical single-loop chatbot systems, AGI is designed as a reusable agent infrastructure layer supporting multi-channel ingress, concurrency-safe execution, and extensible capabilities.
+
+## Why AGI
+
+Most agent projects stop at a single-session chat loop. They can answer prompts, but they usually break down when tasks require isolation, delegation, persistence, scheduling, or integration with heterogeneous tools.
+
+AGI is built as a full runtime:
+
+- Multi-channel ingress across Telegram, Discord, CLI, HTTP, and OpenAI-compatible APIs
+- Session-isolated execution for concurrency-safe multi-user and multi-agent workloads
+- Recursive subagent delegation with bounded depth and asynchronous result propagation
+- Persistent memory with hybrid retrieval, temporal scoring, and reranking
+- Extensible capability system spanning built-in tools, runtime-loaded skills, and MCP servers
+- Durable task scheduling for recurring and long-running automation
+
+## Key Capabilities
+
+- **Concurrency-safe agent execution**  
+  Per-session isolation via `asyncio.Lock` prevents state corruption under concurrent workloads.
+
+- **Recursive multi-agent delegation**  
+  Agents can spawn subagents under bounded depth and concurrency limits, enabling structured task decomposition without runaway agent trees.
+
+- **Hybrid memory retrieval**  
+  Dense retrieval, sparse retrieval, reciprocal rank fusion, temporal decay, and reranking are combined into a single memory pipeline.
+
+- **Persistent scheduling**  
+  Cron and interval jobs are stored in SQLite and injected back into agent sessions, allowing automation to survive restarts.
+
+- **Unified capability layer**  
+  Built-in tools, skill modules, and external MCP servers are exposed through one runtime model and one OpenAI-compatible tool schema.
+
+- **OpenAI-compatible serving layer**  
+  The runtime exposes both `/v1/chat/completions` and a unified `/v1/messages` endpoint for external integration.
 
 ## Architecture
 
-```
+```text
 Telegram / Discord / CLI / HTTP / OpenAI API
                     │
              GatewayDispatcher
                     │
                MessageQueue
                     │
-                AgentLoop     
-                    │     
+                AgentLoop
+                    │
           ┌─────────┼─────────┐
         Tools    Memory    Skills/MCP
 ```
 
-### Channels
+The system separates ingress, orchestration, execution, and capability layers:
+
+- **GatewayDispatcher** normalizes inbound traffic into a single `InboundMessage` format
+- **MessageQueue** decouples ingress from agent execution
+- **AgentLoop** owns reasoning, tool execution, turn control, and loop termination
+- **Tools / Memory / Skills / MCP** form the runtime capability substrate
+
+## Channels
 
 All inbound messages are normalized into `InboundMessage` and routed through a single `GatewayDispatcher`, regardless of origin.
 
@@ -29,49 +71,56 @@ All inbound messages are normalized into `InboundMessage` and routed through a s
 | Gateway HTTP | Unified REST endpoint (`POST /v1/messages`) |
 | OpenAI API | Compatible endpoint (`POST /v1/chat/completions`) |
 
-### Agent Loop
+## Execution Model
 
 Each session runs an isolated ReAct loop:
 
-1. Build context — system prompt + memory injection + history compaction
-2. Stream LLM response
-3. Execute tool calls concurrently, collect results
-4. Detect dead-loops (repeated identical calls)
-5. Iterate until `end_turn` or max iterations
+1. Build context with system prompt, memory injection, and history compaction
+2. Stream LLM output
+3. Execute tool calls concurrently and collect results
+4. Detect dead-loops from repeated identical tool patterns
+5. Iterate until `end_turn` or the configured iteration limit
 
 Sessions are guarded by per-session `asyncio.Lock` for concurrency safety.
 
-### Subagent Spawning
+## Multi-Agent Delegation
 
-The `SubagentManager` supports dynamic child agent delegation:
+The `SubagentManager` supports dynamic child-agent orchestration:
 
 - Agents can spawn subagents via the `spawn_subagent` tool
-- Bounded recursive depth (configurable `max_depth`)
+- Recursive depth is bounded by configurable `max_depth`
 - Each subagent runs in an isolated session context
-- Results are propagated asynchronously back to the parent session
-- Max concurrent subagents configurable per runtime
+- Results are propagated asynchronously back to the parent
+- Runtime-level limits cap concurrent subagent execution
 
-### Cron Scheduler
+This allows long-horizon tasks to be decomposed into parallel, isolated workflows.
+
+## Scheduling
 
 `CronService` wraps APScheduler with agent-aware scheduling:
 
 - Standard cron syntax: `0 9 * * 1-5`
 - Interval shorthand: `interval:30m`, `interval:2h`
 - One-shot jobs: `once`
-- Jobs inject `InboundMessage` directly into the agent session
-- Persisted to SQLite — survives restarts
-- Manageable via the `cron` tool at runtime
+- Jobs inject `InboundMessage` directly into the target session
+- Job state is persisted to SQLite across restarts
+- Schedules are manageable at runtime via the `cron` tool
 
-### Memory
+## Memory System
 
-Hybrid retrieval pipeline per agent:
+Each agent uses a hybrid retrieval pipeline:
 
 - **Dense**: sqlite-vec cosine similarity
 - **Sparse**: FTS5 BM25
 - **Fusion**: Reciprocal Rank Fusion
-- **Temporal decay**: exponential scoring by recency
-- **Reranking**: MMR or LLM pointwise
-- Memory is written as Markdown files and indexed to SQLite
+- **Temporal decay**: exponential recency scoring
+- **Reranking**: MMR or LLM pointwise scoring
+
+Memory is written as Markdown files and indexed into SQLite.
+
+## Capability System
+
+AGI unifies built-in tools, runtime-loaded skills, and external MCP servers under the same execution model.
 
 ### Tools
 
@@ -94,36 +143,50 @@ Built-in tools registered at startup:
 
 Each skill is a subdirectory under `skills/` containing a `SKILL.md` and an optional `scripts/` directory:
 
-```
+```text
 skills/
   summarize/
-    SKILL.md              ← instructions, when to use, how to invoke scripts
+    SKILL.md
     scripts/
-      summarize.py        ← executable helper, auto chmod +x on load
+      summarize.py
 ```
 
 Flow:
+
 1. All skills are listed in the agent system prompt with their description
 2. When the user's request matches a skill, the agent calls `read_skill("name")`
 3. `SKILL.md` is returned with `{baseDir}` replaced by the skill's absolute path
-4. The agent follows the instructions — calling `shell`, `fs`, `web`, or running scripts via `shell("python3 {baseDir}/scripts/...")`
+4. The agent follows the instructions by calling tools or executing helper scripts
 
 Skills are loaded from:
-1. `./skills/` (project-level, shared across agents)
-2. `memory/agents/<id>/skills/` (per-agent overrides)
+
+1. `./skills/` for project-level shared skills
+2. `memory/agents/<id>/skills/` for per-agent overrides
 
 ### MCP
 
-External MCP servers are configured in `agi.yaml` under `mcp.servers`. Each server is launched as a subprocess and communicates over stdio. Tools are auto-discovered and unified under the same OpenAI-compatible schema.
+External MCP servers are configured in `agi.yaml` under `mcp.servers`. Each server is launched as a subprocess over stdio, its tools are auto-discovered, and the resulting capabilities are exposed through the same OpenAI-compatible schema used by native tools.
 
-### Hooks
+## Hooks
 
 `HookManager` supports lifecycle hooks:
 
-- `on_startup` / `on_shutdown`
-- `on_message` — fires on every inbound message
-- `on_reply` — fires after agent response
-- `on_tool_call` — fires on every tool invocation
+- `on_startup`
+- `on_shutdown`
+- `on_message`
+- `on_reply`
+- `on_tool_call`
+
+## Example Flow
+
+User: "Summarize this repository"
+
+1. `GatewayDispatcher` normalizes the inbound message
+2. `AgentLoop` builds context and injects relevant memory
+3. The model selects a capability such as `read_skill("summarize")`
+4. The runtime executes the skill instructions via tools or scripts
+5. Results can be written back to memory
+6. The final response is returned through the originating channel
 
 ## Quickstart
 
@@ -138,7 +201,7 @@ pip install -e .
 **2. Create config**
 
 ```bash
-agi init          # writes ~/.agi/config.yaml with defaults
+agi init
 ```
 
 Or copy the example into the project directory:
@@ -158,7 +221,7 @@ agents:
       primary: "ollama/qwen3:8b"   # or "openai/gpt-4o-mini", "gemini/gemini-2.5-flash", etc.
 ```
 
-For OpenRouter / OpenAI / Gemini, add the key under `keys:`:
+For OpenRouter, OpenAI, or Gemini, add the relevant keys under `keys:`:
 
 ```yaml
 keys:
@@ -169,18 +232,16 @@ keys:
 **4. Run**
 
 ```bash
-# Interactive CLI session (no Telegram needed)
+# Interactive CLI session
 agi run --cli
 
-# Or start full runtime (Telegram + HTTP gateway)
+# Full runtime
 agi run
 ```
 
 **5. Verify**
 
-With `agi run --cli` you should see a prompt. Type a message and the agent will respond.
-
-If you enabled the gateway (`gateway.enabled: true` in config), check:
+With `agi run --cli` you should see a prompt. If the HTTP gateway is enabled, check:
 
 ```bash
 curl http://localhost:8090/health
