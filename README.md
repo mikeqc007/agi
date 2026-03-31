@@ -98,21 +98,24 @@ Built-in tools registered at startup:
 
 ### Skills
 
-Skills are `SKILL.md` files that define instructions, workflows, or tool usage patterns. Each skill lives in its own subdirectory under `skills/`:
+Each skill is a subdirectory under `skills/` containing a `SKILL.md` and an optional `scripts/` directory:
 
 ```
 skills/
   summarize/
-    SKILL.md       ← instructions + any shell commands to run
-  deploy/
-    SKILL.md       ← can instruct the agent to run shell commands,
-                      call APIs, read/write files, etc.
+    SKILL.md              ← instructions, when to use, how to invoke scripts
+    scripts/
+      summarize.py        ← executable helper, auto chmod +x on load
 ```
 
-The agent reads the `SKILL.md` at invocation time and follows its instructions — including executing shell commands, calling tools, or chaining multiple steps. Code execution happens through the agent's existing tool set (`shell`, `fs`, `web`, etc.).
+Flow:
+1. All skills are listed in the agent system prompt with their description
+2. When the user's request matches a skill, the agent calls `read_skill("name")`
+3. `SKILL.md` is returned with `{baseDir}` replaced by the skill's absolute path
+4. The agent follows the instructions — calling `shell`, `fs`, `web`, or running scripts via `shell("python3 {baseDir}/scripts/...")`
 
 Skills are loaded from:
-1. `./skills/` (project-level)
+1. `./skills/` (project-level, shared across agents)
 2. `memory/agents/<id>/skills/` (per-agent overrides)
 
 ### MCP
