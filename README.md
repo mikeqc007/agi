@@ -210,3 +210,7 @@ curl http://localhost:8090/v1/messages \
 - Python 3.11+
 - SQLite with sqlite-vec extension
 - Playwright (for browser tools): `playwright install chromium`
+
+## Contributing
+
+Contributions welcome.
