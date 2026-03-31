@@ -14,8 +14,8 @@ build/
 logs/
 *.log
 
-# Memory (auto-created at runtime)
-memory/
+# Runtime state (auto-created at runtime)
+state/
 
 # Runtime
 *.db

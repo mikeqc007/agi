@@ -174,15 +174,15 @@ class AppRuntime:
         await self._cli.start()
 
     def _ensure_memory_dirs(self) -> None:
-        """Create the 7-scope memory directory tree under config_dir/memory/."""
+        """Create the persistent runtime state directory tree under config_dir/state/."""
         from pathlib import Path
-        memory_root = Path(self.cfg.config_dir) / self.cfg.memory.memory_dir
+        state_root = Path(self.cfg.config_dir) / self.cfg.memory.memory_dir
         # Top-level scopes
         for d in ("global", "users", "chats", "threads"):
-            (memory_root / d).mkdir(parents=True, exist_ok=True)
+            (state_root / d).mkdir(parents=True, exist_ok=True)
         # Per-agent directories
         for agent in self.cfg.agents:
-            agent_dir = memory_root / "agents" / agent.id
+            agent_dir = state_root / "agents" / agent.id
             for sub in ("kb", "memory", "skills"):
                 (agent_dir / sub).mkdir(parents=True, exist_ok=True)
             # Create AGENT.md template if missing
@@ -194,15 +194,15 @@ class AppRuntime:
                     "     This file is injected directly into the system prompt. -->\n",
                     encoding="utf-8",
                 )
-        logger.info("Memory directory tree ready at %s", memory_root)
+        logger.info("Runtime state directory tree ready at %s", state_root)
 
     async def _sync_memory_files(self) -> None:
         """Index all memory .md files across all three tiers."""
         from pathlib import Path
         from agi.memory.file_sync import sync_memory_root
-        memory_root = Path(self.cfg.config_dir) / self.cfg.memory.memory_dir
+        state_root = Path(self.cfg.config_dir) / self.cfg.memory.memory_dir
         try:
-            await sync_memory_root(self.db, memory_root, self.cfg.agents, self.cfg.memory)
+            await sync_memory_root(self.db, state_root, self.cfg.agents, self.cfg.memory)
         except Exception as e:
             logger.warning("Memory file sync failed: %s", e)
 

@@ -72,6 +72,7 @@ async def run_memory_flush(
     models: list[str],
     max_tokens: int,
     config_dir: str,
+    state_dir: str,
     agent_id: str,
     user_id: str = "",
     peer_kind: str = "direct",
@@ -84,15 +85,15 @@ async def run_memory_flush(
     from pathlib import Path
 
     date_str = datetime.date.today().strftime("%Y-%m-%d")
-    memory_root = Path(config_dir) / "memory"
+    state_root = Path(config_dir) / state_dir
 
     safe_uid = user_id.replace("/", "_").replace("..", "_") if user_id else "default"
-    user_flush_dir = memory_root / "users" / safe_uid / "flush"
+    user_flush_dir = state_root / "users" / safe_uid / "flush"
     user_flush_dir.mkdir(parents=True, exist_ok=True)
 
     summary_file = str(user_flush_dir / f"summary-{date_str}.md")
     prefs_file = str(user_flush_dir / f"prefs-{date_str}.md")
-    agent_file = str(memory_root / "agents" / agent_id / "memory" / f"{date_str}.md")
+    agent_file = str(state_root / "agents" / agent_id / "memory" / f"{date_str}.md")
     Path(agent_file).parent.mkdir(parents=True, exist_ok=True)
 
     # Build prompt
@@ -106,7 +107,7 @@ async def run_memory_flush(
     chat_file = ""
     if peer_kind == "group" and chat_id:
         safe_cid = chat_id.replace("/", "_").replace("..", "_")
-        chat_dir = memory_root / "chats" / safe_cid
+        chat_dir = state_root / "chats" / safe_cid
         chat_dir.mkdir(parents=True, exist_ok=True)
         chat_file = str(chat_dir / f"flush-{date_str}.md")
         prompt += _EXTRA_CHAT_PROMPT.format(chat_file=chat_file)
@@ -115,7 +116,7 @@ async def run_memory_flush(
     thread_file = ""
     if thread_id:
         safe_tid = thread_id.replace("/", "_").replace("..", "_")
-        thread_dir = memory_root / "threads" / safe_tid
+        thread_dir = state_root / "threads" / safe_tid
         thread_dir.mkdir(parents=True, exist_ok=True)
         thread_file = str(thread_dir / f"flush-{date_str}.md")
         prompt += _EXTRA_THREAD_PROMPT.format(thread_file=thread_file)

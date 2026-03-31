@@ -7,7 +7,7 @@ from agi.tools.registry import tool
 from agi.types import ToolContext
 
 
-def _memory_root(ctx: ToolContext) -> Path | None:
+def _state_root(ctx: ToolContext) -> Path | None:
     app = ctx.app
     if not app:
         return None
@@ -52,7 +52,7 @@ async def remember(ctx: ToolContext, content: str, scope: str = "user") -> str:
         ids = await ctx.app.memory_manager.add(ctx.agent_id, entity_id, content, scope=scope)
 
         # Also write to corresponding md file
-        root = _memory_root(ctx)
+        root = _state_root(ctx)
         if root:
             md_path: Path | None = None
             safe = lambda s: s.replace("/", "_").replace("..", "_") if s else "default"

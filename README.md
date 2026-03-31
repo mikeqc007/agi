@@ -161,7 +161,7 @@ Flow:
 Skills are loaded from:
 
 1. `./skills/` for project-level shared skills
-2. `memory/agents/<id>/skills/` for per-agent overrides
+2. `state/agents/<id>/skills/` for per-agent overrides
 
 ### MCP
 

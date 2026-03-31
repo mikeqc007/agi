@@ -66,7 +66,7 @@ class TtsConfig(BaseModel):
 
 
 class MemoryConfig(BaseModel):
-    workspace: str = "~/.agi/memory"
+    workspace: str = "~/.agi/state"
     embedding_model: str = "ollama/nomic-embed-text"
     embedding_dim: int = 768
     top_k: int = 6
@@ -75,7 +75,7 @@ class MemoryConfig(BaseModel):
     half_life_days: float = 30.0
     mmr_lambda: float = 0.7
     reranker: str = "mmr"           # mmr / llm / none
-    memory_dir: str = "memory"      # relative to config_dir; stores LLM-written .md files
+    memory_dir: str = "state"       # relative to config_dir; stores persistent runtime state files
     flush_enabled: bool = True      # pre-compaction memory flush (openclaw style)
     flush_prompt: str = ""          # custom flush prompt (empty = use default)
 

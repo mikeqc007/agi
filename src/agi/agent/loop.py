@@ -168,7 +168,7 @@ class AgentLoop:
                     _flush_user_id = msg.sender or session.peer_id
                     await run_memory_flush(
                         history, models, model_cfg.max_tokens,
-                        config_dir, agent_cfg.id,
+                        config_dir, app.cfg.memory.memory_dir, agent_cfg.id,
                         user_id=_flush_user_id,
                         peer_kind=session.peer_kind,
                         chat_id=session.peer_id,
@@ -178,8 +178,8 @@ class AgentLoop:
                     # Re-index the user's flush dir
                     from pathlib import Path
                     from agi.memory.file_sync import sync_user_flush
-                    memory_root = Path(config_dir) / app.cfg.memory.memory_dir
-                    await sync_user_flush(app.db, memory_root, _flush_user_id, app.cfg.memory)
+                    state_root = Path(config_dir) / app.cfg.memory.memory_dir
+                    await sync_user_flush(app.db, state_root, _flush_user_id, app.cfg.memory)
             history = await compact(history, primary, model_cfg.max_tokens)
             logger.info("Compacted history for session %s", session.session_key)
 
