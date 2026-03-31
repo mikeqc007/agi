@@ -11,7 +11,8 @@ Telegram / Discord / CLI / HTTP / OpenAI API
                     │
                MessageQueue
                     │
-                AgentLoop
+                AgentLoop     
+                    │     
           ┌─────────┼─────────┐
         Tools    Memory    Skills/MCP
 ```
