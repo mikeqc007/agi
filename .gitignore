@@ -14,7 +14,7 @@ build/
 logs/
 *.log
 
-# Memory (personal data)
+# Memory (auto-created at runtime)
 memory/
 
 # Runtime
