@@ -5,22 +5,21 @@ A Python-based autonomous agent runtime supporting multi-channel interaction, dy
 ## Architecture
 
 ```
-Telegram / Discord / CLI / HTTP / OpenAI-compatible API
-                         │
-                  GatewayDispatcher
-                         │
-                    MessageQueue        ← per-session, drop/collect modes
-                         │
-                     AgentLoop          ← ReAct-style reasoning & tool execution
-                    /    │    \
-        SubagentManager  │  HookManager
-                         │
-                    CronService
-                         │
-            ┌────────────┼────────────┐
-          Tools        Memory      Skills/MCP
-     (shell/fs/web   (hybrid       (SKILL.md
-      browser/tts)    search)       + stdio)
+Telegram / Discord / CLI / HTTP / OpenAI API
+                    │
+             GatewayDispatcher
+                    │
+               MessageQueue
+                    │
+                AgentLoop
+              /     │     \
+   SubagentManager  │   HookManager
+                    │
+               CronService
+                    │
+          ┌─────────┼─────────┐
+        Tools    Memory     Skills
+                            MCP
 ```
 
 ### Channels
