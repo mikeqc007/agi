@@ -129,33 +129,89 @@ External MCP servers are configured in `agi.yaml` under `mcp.servers`. Each serv
 - `on_reply` — fires after agent response
 - `on_tool_call` — fires on every tool invocation
 
-## Installation
+## Quickstart
+
+**1. Install**
 
 ```bash
+git clone https://github.com/mikeqc007/agi.git
+cd agi
 pip install -e .
 ```
 
-## Configuration
+**2. Create config**
 
-Copy the example config and fill in your values:
+```bash
+agi init          # writes ~/.agi/config.yaml with defaults
+```
+
+Or copy the example into the project directory:
 
 ```bash
 cp agi.yaml.example agi.yaml
 ```
+
+**3. Set your LLM**
+
+Edit `agi.yaml` (or `~/.agi/config.yaml`) and set a model. The default uses Ollama:
+
+```yaml
+agents:
+  - id: default
+    model:
+      primary: "ollama/qwen3:8b"   # or "openai/gpt-4o-mini", "gemini/gemini-2.5-flash", etc.
+```
+
+For OpenRouter / OpenAI / Gemini, add the key under `keys:`:
+
+```yaml
+keys:
+  OPENROUTER_API_KEY: "sk-or-..."
+  OPENAI_API_KEY: "sk-..."
+```
+
+**4. Run**
+
+```bash
+# Interactive CLI session (no Telegram needed)
+agi run --cli
+
+# Or start full runtime (Telegram + HTTP gateway)
+agi run
+```
+
+**5. Verify**
+
+With `agi run --cli` you should see a prompt. Type a message and the agent will respond.
+
+If you enabled the gateway (`gateway.enabled: true` in config), check:
+
+```bash
+curl http://localhost:8090/health
+```
+
+## Configuration Reference
 
 Key sections in `agi.yaml`:
 
 ```yaml
 agents:
   - id: default
-    system_prompt: "..."
+    system_prompt: "You are a helpful assistant."
     model:
-      primary: "openrouter/..."
-      fallbacks: [...]
+      primary: "ollama/qwen3:8b"
+      fallbacks: ["openai/gpt-4o-mini"]
+      temperature: 0.7
+      max_tokens: 8192
 
 telegram:
   token: "YOUR_BOT_TOKEN"
-  allowed_users: [123456789]
+  allowed_users: [123456789]    # empty = allow all
+
+gateway:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8090
 
 mcp:
   servers:
@@ -164,22 +220,6 @@ mcp:
 
 keys:
   OPENROUTER_API_KEY: "..."
-```
-
-## Usage
-
-```bash
-# Create default config
-agi init
-
-# Start runtime
-agi run
-
-# Start with interactive CLI instead of Telegram
-agi run --cli
-
-# Use a specific config file
-agi run --config /path/to/agi.yaml
 ```
 
 ## HTTP API
