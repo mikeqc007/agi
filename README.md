@@ -1,14 +1,8 @@
 ## Background
 
-LLMs are powerful but fundamentally limited out of the box: they have no persistent memory 
-and no ability to act. This project is my attempt to solve both problems from first principles — 
-building a runtime that gives an LLM stable long-term memory via hybrid RAG retrieval, and 
-real-world execution capability via a unified tool and skill abstraction layer, independently
-aligned with Anthropic's MCP specification.
+LLMs are powerful but limited out of the box — no persistent memory, no ability to act. This project builds a runtime that solves both: stable long-term memory via hybrid RAG retrieval, and real-world execution via a unified tool and skill layer built on the MCP specification.
 
-The result is a fully autonomous agent runtime that can handle complex, long-horizon tasks 
-across sessions, delegate to subagents, run scheduled jobs, and operate across multiple 
-channels — all driven by a single ReAct loop at its core.
+The result is a fully autonomous agent runtime that handles complex, long-horizon tasks across sessions, delegates to subagents, runs scheduled jobs, and operates across multiple channels — all driven by a single ReAct loop at its core.
 
 # AGI — Autonomous Multi-Agent Runtime
 
