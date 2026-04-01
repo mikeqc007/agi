@@ -1,17 +1,19 @@
 # AGI — Autonomous Multi-Agent Runtime
 
-A production-oriented multi-agent runtime for long-horizon task execution, recursive agent delegation, persistent memory, and tool-integrated automation.
+This project is a multi-agent runtime for long-horizon execution across CLI, chat, and OpenAI-compatible interfaces.
 
-Unlike typical single-loop chatbot systems, AGI is designed as a reusable agent infrastructure layer supporting multi-channel ingress, concurrency-safe execution, and extensible capabilities.
+It combines session-isolated agent loops, recursive subagent delegation, persistent memory, scheduled execution, and a unified capability layer spanning tools, skills, and MCP servers.
 
 ## Why AGI
 
-Most agent projects stop at a single-session chat loop. They can answer prompts, but they usually break down when tasks require isolation, delegation, persistence, scheduling, or integration with heterogeneous tools.
+Most agent systems are still structured as single-session chat loops.
+
+This project is designed as a reusable runtime for multi-channel interaction, delegated task execution, durable state, and extensible agent capabilities.
 
 AGI is built as a full runtime:
 
 - Multi-channel ingress across Telegram, Discord, CLI, HTTP, and OpenAI-compatible APIs
-- Session-isolated execution for concurrency-safe multi-user and multi-agent workloads
+- Session-isolated execution for multi-user and multi-agent workloads
 - Recursive subagent delegation with bounded depth and asynchronous result propagation
 - Persistent memory with hybrid retrieval, temporal scoring, and reranking
 - Extensible capability system spanning built-in tools, runtime-loaded skills, and MCP servers
@@ -19,8 +21,8 @@ AGI is built as a full runtime:
 
 ## Key Capabilities
 
-- **Concurrency-safe agent execution**  
-  Per-session isolation via `asyncio.Lock` prevents state corruption under concurrent workloads.
+- **Session-isolated agent execution**  
+  Per-session isolation via `asyncio.Lock` keeps agent turns scoped to a single session at a time.
 
 - **Recursive multi-agent delegation**  
   Agents can spawn subagents under bounded depth and concurrency limits, enabling structured task decomposition without runaway agent trees.
@@ -90,7 +92,7 @@ Each session runs an isolated ReAct loop:
 4. Detect dead-loops from repeated identical tool patterns
 5. Iterate until `end_turn` or the configured iteration limit
 
-Sessions are guarded by per-session `asyncio.Lock` for concurrency safety.
+Sessions are guarded by per-session `asyncio.Lock` to keep execution scoped per session.
 
 ## Multi-Agent Delegation
 
