@@ -4,13 +4,13 @@ This project is a multi-agent runtime for long-horizon execution across multiple
 
 It combines session-isolated agent loops, recursive subagent delegation, persistent memory, scheduled execution, and a unified capability layer spanning tools, skills, and MCP servers.
 
+This project is actively under development, and contributions are welcome.
+
 ## Why AGI
 
 Most agent systems are still structured as single-session chat loops.
 
 This project is designed as a reusable runtime for multi-channel interaction, delegated task execution, durable state, and extensible agent capabilities.
-
-AGI is actively under development. Contributions are welcome.
 
 AGI is built as a full runtime:
 
