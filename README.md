@@ -71,6 +71,15 @@ All inbound messages are normalized into `InboundMessage` and routed through a s
 | Gateway HTTP | Unified REST endpoint (`POST /v1/messages`) |
 | OpenAI API | Compatible endpoint (`POST /v1/chat/completions`) |
 
+## What It Can Do
+
+- Run agents locally through an interactive CLI or remotely through Telegram, Discord, HTTP, and OpenAI-compatible APIs
+- Execute coding and automation tasks through shell, file system, browser automation, and desktop-control tools
+- Accept text and image inputs, including channel attachments and screenshots produced during tool execution
+- Route screenshot outputs back through the agent loop for vision-capable models or a dedicated `vision_model`
+- Transcribe Telegram voice messages into text when Whisper is configured
+- Return streamed text responses, with optional Telegram voice output via TTS
+
 ## Execution Model
 
 Each session runs an isolated ReAct loop:
