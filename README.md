@@ -1,10 +1,10 @@
 # AGI — Autonomous Multi-Agent Runtime
 
+This project is actively under development, and contributions are welcome.
+
 This project is a multi-agent runtime for long-horizon execution across multiple channels, including Telegram, Discord, CLI, HTTP, and OpenAI-compatible APIs.
 
 It combines session-isolated agent loops, recursive subagent delegation, persistent memory, scheduled execution, and a unified capability layer spanning tools, skills, and MCP servers.
-
-This project is actively under development, and contributions are welcome.
 
 ## Why AGI
 
