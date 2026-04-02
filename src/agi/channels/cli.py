@@ -60,15 +60,24 @@ class CLIChannel:
         print("Type your message and press Enter. Ctrl+C to interrupt, Ctrl+D or 'exit' to quit.\n")
 
         self._current_task: asyncio.Task | None = None
+        self._cancel_count = 0
 
         import signal as _signal
+        import os as _os
 
         def _sigint_handler():
             t = self._current_task
             if t and not t.done():
-                t.cancel()
+                self._cancel_count += 1
+                if self._cancel_count == 1:
+                    sys.stdout.write("\n\033[91m[正在中断... 再按一次 Ctrl+C 强制退出]\033[0m\n")
+                    sys.stdout.flush()
+                    t.cancel()
+                else:
+                    sys.stdout.write("\n\033[91m[强制退出]\033[0m\n")
+                    sys.stdout.flush()
+                    _os._exit(130)
             else:
-                # No task running — raise KeyboardInterrupt to exit
                 raise KeyboardInterrupt
 
         loop = asyncio.get_event_loop()
@@ -148,6 +157,7 @@ class CLIChannel:
                     print(f"\n\033[91mError: {e}\033[0m")
                 finally:
                     self._current_task = None
+                    self._cancel_count = 0
 
         finally:
             loop.remove_signal_handler(_signal.SIGINT)

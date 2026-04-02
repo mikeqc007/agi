@@ -590,7 +590,7 @@ async def _stream_complete(
     """
     import litellm
 
-    from agi.agent.model_fallback import _is_ollama, _ollama_name, ollama_stream, _think_params
+    from agi.agent.model_fallback import _is_ollama, _ollama_name, ollama_stream, _think_params, complete_with_fallback
 
     last_exc: Exception | None = None
     for model in models:
@@ -669,8 +669,31 @@ async def _stream_complete(
         except Exception as e:
             last_exc = e
             from agi.agent.model_fallback import _extract_status_code, RETRYABLE_CODES
-            if _extract_status_code(e) not in RETRYABLE_CODES:
+            code = _extract_status_code(e)
+            if code not in RETRYABLE_CODES:
                 raise
+            # 500 on streaming — retry same model without streaming
+            if code == 500 and not _is_ollama(model):
+                try:
+                    response = await complete_with_fallback(
+                        models=[model],
+                        messages=messages,
+                        tools=tools,
+                        temperature=model_cfg.temperature,
+                        max_tokens=model_cfg.max_tokens,
+                        on_status=on_text,
+                    )
+                    rmsg = response.choices[0].message
+                    content = rmsg.content or ""
+                    if content and on_text:
+                        on_text(content)
+                    tcs = [
+                        _ToolCallProxy(tc.id, tc.function.name, tc.function.arguments)
+                        for tc in (rmsg.tool_calls or [])
+                    ]
+                    return content, tcs, response.choices[0].finish_reason or "stop", response.usage
+                except Exception:
+                    pass
             if model != models[-1]:
                 msg = f"[{model}] failed: {str(e)[:120]} — trying next model"
                 logger.warning(msg)
