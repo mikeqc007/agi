@@ -390,9 +390,12 @@ class AgentLoop:
                     if name == "say":
                         continue  # say tool displays via ctx.on_text directly
                     # Show key args inline (skip large/binary values)
-                    brief = {k: v for k, v in args.items()
-                             if isinstance(v, (str, int, float, bool)) and len(str(v)) < 80}
-                    args_str = ", ".join(f"{k}={v!r}" for k, v in brief.items())
+                    def _trunc(v: Any, max_len: int = 100) -> str:
+                        s = str(v)
+                        return s if len(s) <= max_len else s[:max_len] + "…"
+                    brief = {k: _trunc(v) for k, v in args.items()
+                             if isinstance(v, (str, int, float, bool))}
+                    args_str = ", ".join(f"{k}={v}" for k, v in brief.items())
                     status = " [denied]" if denied else (" [loop]" if dead else "")
                     on_text(f"{prefix}\033[90m[{name}({args_str}){status}]\033[0m\n")
                     prefix = ""

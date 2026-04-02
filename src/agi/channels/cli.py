@@ -56,13 +56,25 @@ class CLIChannel:
 
     async def _loop(self) -> None:
         print(f"\n\033[1magi CLI\033[0m  (agent: {self._agent_id})")
-        print("Type your message and press Enter. Ctrl+C or 'exit' to quit.\n")
+        print("Type your message and press Enter. Ctrl+C to interrupt, Ctrl+D or 'exit' to quit.\n")
 
-        # patch_stdout() intercepts all sys.stdout writes from any coroutine or
-        # thread while waiting for input, clears the prompt line, prints the
-        # external output, then redraws the prompt.  This eliminates the need
-        # for the user to press Enter after subagent announce output.
-        with patch_stdout(raw=True):
+        self._current_task: asyncio.Task | None = None
+
+        import signal as _signal
+
+        def _sigint_handler():
+            t = self._current_task
+            if t and not t.done():
+                t.cancel()
+            else:
+                # No task running — raise KeyboardInterrupt to exit
+                raise KeyboardInterrupt
+
+        loop = asyncio.get_event_loop()
+        loop.add_signal_handler(_signal.SIGINT, _sigint_handler)
+
+        try:
+          with patch_stdout(raw=True):
             while True:
                 try:
                     text = await self._session.prompt_async(PROMPT)
@@ -112,6 +124,7 @@ class CLIChannel:
 
                 _t0 = time.time()
                 _task = asyncio.create_task(self._dispatcher.submit_inbound(inbound))
+                self._current_task = _task
                 try:
                     reply = await _task
                     if streamed:
@@ -128,17 +141,15 @@ class CLIChannel:
                                 print(f"\033[90m[tokens: {stats['prompt_tokens']}↑ {stats['completion_tokens']}↓  {_elapsed:.1f}s]\033[0m")
                         except Exception:
                             pass
-                except KeyboardInterrupt:
-                    _task.cancel()
-                    try:
-                        await _task
-                    except (asyncio.CancelledError, Exception):
-                        pass
-                    print("\n\033[91m[已中断]\033[0m")
                 except asyncio.CancelledError:
                     print("\n\033[91m[已中断]\033[0m")
                 except Exception as e:
                     print(f"\n\033[91mError: {e}\033[0m")
+                finally:
+                    self._current_task = None
+
+        finally:
+            loop.remove_signal_handler(_signal.SIGINT)
 
     async def _handle_command(self, cmd: str) -> None:
         parts = cmd.split(maxsplit=1)

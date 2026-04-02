@@ -28,23 +28,27 @@ async def read_file(ctx: ToolContext, path: str, offset: int = 0, limit: int = 0
         with open(p, "r", errors="replace") as f:
             lines = f.readlines()
         total = len(lines)
-        start = max(0, offset)
+        start = max(0, int(offset))
+        limit = int(limit)
         end = (start + limit) if limit > 0 else total
         selected = lines[start:end]
         content = "".join(
             f"{start + i + 1}\t{line}" for i, line in enumerate(selected)
         )
-        if len(content) > MAX_READ:
+        truncated = len(content) > MAX_READ
+        if truncated:
             content = content[:MAX_READ] + f"\n[...truncated]"
-        if offset > 0 or limit > 0:
-            content = f"[Lines {start + 1}-{min(end, total)} of {total}]\n" + content
-        return content
+        shown_end = start + len(selected)
+        header = f"[Lines {start + 1}-{min(shown_end, total)} of {total}]"
+        if truncated:
+            header += " [truncated]"
+        return f"{header}\n{content}"
     except Exception as e:
         return f"Error: {e}"
 
 
 @tool
-async def write_file(ctx: ToolContext, path: str, content: str) -> str:
+async def write_file(ctx: ToolContext, path: str, content: str, append: bool = False) -> str:
     """Write content to a file (creates or overwrites).
 
     path: File path to write
@@ -53,7 +57,8 @@ async def write_file(ctx: ToolContext, path: str, content: str) -> str:
     try:
         p = Path(path).expanduser()
         p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w") as f:
+        mode = "a" if append else "w"
+        with open(p, mode) as f:
             f.write(content)
         return f"Written {len(content)} chars to {path}"
     except Exception as e:
