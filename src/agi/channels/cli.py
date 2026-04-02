@@ -30,7 +30,8 @@ class CLIChannel:
     def __init__(self, dispatcher: GatewayDispatcher, agent_id: str = "default", db: Any = None) -> None:
         self._dispatcher = dispatcher
         self._agent_id = agent_id
-        self._peer_id = "cli-user"
+        import getpass
+        self._peer_id = f"cli-{getpass.getuser()}"
         self._msg_id = 0
         self._task: asyncio.Task | None = None
         _history_file = __import__("pathlib").Path.home() / ".agi_history"

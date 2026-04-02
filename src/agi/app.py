@@ -172,21 +172,33 @@ class AppRuntime:
     async def start_cli(self, agent_id: str = "default") -> None:
         from agi.channels.cli import CLIChannel
         self._cli = CLIChannel(self.dispatcher, agent_id, db=self.db)
+        self._ensure_user_dir(self._cli._peer_id)
         await self._cli.start()
+
+    def _ensure_user_dir(self, peer_id: str) -> None:
+        """Create the per-user memory directory tree for a known peer."""
+        from pathlib import Path
+        state_root = Path(self.cfg.config_dir) / self.cfg.memory.memory_dir
+        safe = peer_id.replace("/", "_").replace("..", "_")
+        user_dir = state_root / "users" / safe
+        (user_dir / "kb").mkdir(parents=True, exist_ok=True)
+        (user_dir / "flush" / "summary").mkdir(parents=True, exist_ok=True)
+        (user_dir / "flush" / "prefs").mkdir(parents=True, exist_ok=True)
 
     def _ensure_memory_dirs(self) -> None:
         """Create the persistent runtime state directory tree under config_dir/state/."""
         from pathlib import Path
         state_root = Path(self.cfg.config_dir) / self.cfg.memory.memory_dir
+
         # Top-level scopes
         for d in ("global", "users", "chats", "threads"):
             (state_root / d).mkdir(parents=True, exist_ok=True)
+
         # Per-agent directories
         for agent in self.cfg.agents:
             agent_dir = state_root / "agents" / agent.id
             for sub in ("kb", "memory", "skills"):
                 (agent_dir / sub).mkdir(parents=True, exist_ok=True)
-            # Create AGENT.md template if missing
             agent_md = agent_dir / "AGENT.md"
             if not agent_md.exists():
                 agent_md.write_text(
@@ -195,6 +207,7 @@ class AppRuntime:
                     "     This file is injected directly into the system prompt. -->\n",
                     encoding="utf-8",
                 )
+
         logger.info("Runtime state directory tree ready at %s", state_root)
 
     async def _sync_memory_files(self) -> None:

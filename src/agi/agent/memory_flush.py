@@ -3,8 +3,8 @@ from __future__ import annotations
 """Pre-compaction memory flush — openclaw style.
 
 Before compacting the context window, ask the LLM to write memories to three files:
-  1. users/{peer_id}/flush/summary-YYYY-MM-DD.md   — conversation summary
-  2. users/{peer_id}/flush/prefs-YYYY-MM-DD.md     — user preferences/facts
+  1. users/{peer_id}/flush/summary/summary-YYYY-MM-DD.md   — conversation summary
+  2. users/{peer_id}/flush/prefs/prefs-YYYY-MM-DD.md       — user preferences/facts
   3. agents/{agent_id}/memory/YYYY-MM-DD.md        — agent business knowledge
 
 For group chats (peer_kind=group):
@@ -88,11 +88,13 @@ async def run_memory_flush(
     state_root = Path(config_dir) / state_dir
 
     safe_uid = user_id.replace("/", "_").replace("..", "_") if user_id else "default"
-    user_flush_dir = state_root / "users" / safe_uid / "flush"
-    user_flush_dir.mkdir(parents=True, exist_ok=True)
+    user_dir = state_root / "users" / safe_uid
+    (user_dir / "kb").mkdir(parents=True, exist_ok=True)
+    (user_dir / "flush" / "summary").mkdir(parents=True, exist_ok=True)
+    (user_dir / "flush" / "prefs").mkdir(parents=True, exist_ok=True)
 
-    summary_file = str(user_flush_dir / f"summary-{date_str}.md")
-    prefs_file = str(user_flush_dir / f"prefs-{date_str}.md")
+    summary_file = str(user_dir / "flush" / "summary" / f"summary-{date_str}.md")
+    prefs_file = str(user_dir / "flush" / "prefs" / f"prefs-{date_str}.md")
     agent_file = str(state_root / "agents" / agent_id / "memory" / f"{date_str}.md")
     Path(agent_file).parent.mkdir(parents=True, exist_ok=True)
 
