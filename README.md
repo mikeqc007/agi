@@ -39,7 +39,7 @@ AGI is built as a full runtime:
   Built-in tools, skill modules, and external MCP servers are exposed through one runtime model and one OpenAI-compatible tool schema.
 
 - **Coding agent capability**  
-  File read/write/edit, grep, glob, and shell execution tools give the agent Claude Code-level coding workflows: read a codebase, locate relevant code, make precise edits, run tests, and iterate — all in one agent loop.
+  Perform coding tasks like a coding agent, similar to Claude Code: read a codebase, locate relevant code, make precise edits, run tests, and iterate — all in one agent loop, powered by file read/write/edit, grep, glob, and shell tools.
 
 - **OpenAI-compatible serving layer**  
   The runtime exposes both `/v1/chat/completions` and a unified `/v1/messages` endpoint for external integration.
@@ -81,7 +81,7 @@ All inbound messages are normalized into `InboundMessage` and routed through a s
 ## What It Can Do
 
 - Run agents locally through an interactive CLI or remotely through Telegram, Discord, HTTP, and OpenAI-compatible APIs
-- Perform coding tasks at a Claude Code-level: read files, search codebases with grep and glob, make precise edits, run and verify code through shell — all driven by the agent loop
+- Perform coding tasks like a coding agent, similar to Claude Code: read files, search codebases with grep and glob, make precise edits, run and verify code through shell — all driven by the agent loop
 - Execute broader automation tasks through browser automation and desktop-control tools
 - Accept text and image inputs, including channel attachments and screenshots produced during tool execution
 - Route screenshot outputs back through the agent loop for vision-capable models or a dedicated `vision_model`
