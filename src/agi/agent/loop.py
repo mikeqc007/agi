@@ -64,6 +64,10 @@ def _looks_like_fabricated_tool_output(text: str) -> bool:
         '"name": "',
         '"tool": "',
         '"arguments":',
+        "<tool_call>",
+        "</tool_call>",
+        '{"name":',
+        '{ "name":',
     )
     return any(m in s for m in markers)
 
@@ -200,6 +204,8 @@ class AgentLoop:
         tool_success_count = 0
         final_text = ""
         intermediate_nudge_count = 0
+        consecutive_failures = 0
+        MAX_CONSECUTIVE_FAILURES = 4
 
         for iteration in range(agent_cfg.max_iterations):
             # iteration 0: history + working + user_msg (appended last by build_messages)
@@ -210,26 +216,31 @@ class AgentLoop:
                 messages = build_messages(agent_cfg, history + [user_msg] + working, None, memory_ctx, skill_ctx, agent_md)
 
             # Use streaming when on_text callback is present (CLI/Telegram)
-            if on_text is not None:
-                on_text("\033[90m[思考中...]\033[0m\n")
-                text, tool_calls_raw, stop_reason, usage = await _stream_complete(
-                    models, messages, tools, model_cfg, on_text, think_level=think_level
-                )
-            else:
-                response = await complete_with_fallback(
-                    models=models,
-                    messages=messages,
-                    tools=tools if tools else None,
-                    temperature=model_cfg.temperature,
-                    max_tokens=model_cfg.max_tokens,
-                    think_level=think_level,
-                )
-                choice = response.choices[0]
-                rmsg = choice.message
-                text = rmsg.content or ""
-                tool_calls_raw = rmsg.tool_calls or []
-                stop_reason = choice.finish_reason or "stop"
-                usage = response.usage
+            try:
+                if on_text is not None:
+                    on_text("\033[90m[思考中...]\033[0m\n")
+                    text, tool_calls_raw, stop_reason, usage = await _stream_complete(
+                        models, messages, tools, model_cfg, on_text, think_level=think_level
+                    )
+                else:
+                    response = await complete_with_fallback(
+                        models=models,
+                        messages=messages,
+                        tools=tools if tools else None,
+                        temperature=model_cfg.temperature,
+                        max_tokens=model_cfg.max_tokens,
+                        think_level=think_level,
+                    )
+                    choice = response.choices[0]
+                    rmsg = choice.message
+                    text = rmsg.content or ""
+                    tool_calls_raw = rmsg.tool_calls or []
+                    stop_reason = choice.finish_reason or "stop"
+                    usage = response.usage
+            except asyncio.CancelledError:
+                if on_text:
+                    on_text("\n\033[91m[已中断]\033[0m\n")
+                raise
 
             if text:
                 final_text = text
@@ -409,11 +420,23 @@ class AgentLoop:
                     err = _tool_error_text(res)
                     if err:
                         tool_failures.append(f"{name}: {err}")
+                        consecutive_failures += 1
                         if on_text:
                             on_text(f"\033[91m[{name} 失败: {err[:120]}]\033[0m\n")
                     else:
                         tool_success_count += 1
+                        consecutive_failures = 0
                     working.append(_tool_result(tid, name, res))
+
+            # Abort if too many consecutive tool failures — model is stuck
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                fail_msg = f"工具连续失败 {consecutive_failures} 次，放弃执行。最后错误：{tool_failures[-1] if tool_failures else '未知'}"
+                if on_text:
+                    on_text(f"\033[91m{fail_msg}\033[0m\n")
+                working.append({"role": "assistant", "content": fail_msg})
+                full_history = history + [user_msg] + working
+                await app.session_store.replace_history(session.session_key, full_history)
+                return fail_msg
 
             # Inject screenshots after tool results (role order: tool... → user).
             # If a separate vision_model is configured, call it to describe the image

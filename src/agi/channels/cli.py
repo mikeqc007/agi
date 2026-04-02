@@ -111,8 +111,9 @@ class CLIChannel:
                 inbound.metadata["on_text"] = tracking_on_text
 
                 _t0 = time.time()
+                _task = asyncio.create_task(self._dispatcher.submit_inbound(inbound))
                 try:
-                    reply = await self._dispatcher.submit_inbound(inbound)
+                    reply = await _task
                     if streamed:
                         print()  # newline after streamed output
                     elif reply:
@@ -127,6 +128,15 @@ class CLIChannel:
                                 print(f"\033[90m[tokens: {stats['prompt_tokens']}↑ {stats['completion_tokens']}↓  {_elapsed:.1f}s]\033[0m")
                         except Exception:
                             pass
+                except KeyboardInterrupt:
+                    _task.cancel()
+                    try:
+                        await _task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+                    print("\n\033[91m[已中断]\033[0m")
+                except asyncio.CancelledError:
+                    print("\n\033[91m[已中断]\033[0m")
                 except Exception as e:
                     print(f"\n\033[91mError: {e}\033[0m")
 
