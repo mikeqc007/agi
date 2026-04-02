@@ -230,6 +230,7 @@ class AgentLoop:
                         temperature=model_cfg.temperature,
                         max_tokens=model_cfg.max_tokens,
                         think_level=think_level,
+                        on_status=on_text,
                     )
                     choice = response.choices[0]
                     rmsg = choice.message
@@ -405,6 +406,9 @@ class AgentLoop:
                   for tid, name, args, dead, denied in tool_infos],
                 return_exceptions=True,
             )
+            for _res in results:
+                if isinstance(_res, asyncio.CancelledError):
+                    raise _res
 
             pending_images: list[_ImageResult] = []
             for (tid, name, args, _, _), res in zip(tool_infos, results):
@@ -668,7 +672,10 @@ async def _stream_complete(
             if _extract_status_code(e) not in RETRYABLE_CODES:
                 raise
             if model != models[-1]:
-                logger.warning("Streaming model %s failed, trying next: %s", model, e)
+                msg = f"[{model}] failed: {str(e)[:120]} — trying next model"
+                logger.warning(msg)
+                if on_text:
+                    on_text(f"\033[90m{msg}\033[0m\n")
                 continue
 
     raise last_exc or RuntimeError("All models failed")

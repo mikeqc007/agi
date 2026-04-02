@@ -42,21 +42,24 @@ cp agi.yaml.example agi.yaml
 
 **3. Set your LLM**
 
-Edit `agi.yaml` (or `~/.agi/config.yaml`) and set a model. The default uses Ollama:
+Edit `agi.yaml` (or `~/.agi/config.yaml`) and set a model:
 
 ```yaml
 agents:
   - id: default
     model:
-      primary: "openrouter/arcee-ai/trinity-large-preview:free"   # or "gemini/gemini-2.5-flash", "openai/gpt-4o-mini", etc.
+      primary: "anthropic/claude-sonnet-4-5"   # or "openai/gpt-4o", "gemini/gemini-2.5-flash", etc.
+      fallbacks: ["openai/gpt-4o-mini", "gemini/gemini-2.5-flash"]
 ```
 
-For OpenRouter, OpenAI, or Gemini, add the relevant keys under `keys:`:
+Add the relevant API keys under `keys:`:
 
 ```yaml
 keys:
-  OPENROUTER_API_KEY: "sk-or-..."
+  ANTHROPIC_API_KEY: "sk-ant-..."
   OPENAI_API_KEY: "sk-..."
+  GEMINI_API_KEY: "..."
+  OPENROUTER_API_KEY: "sk-or-..."   # for free/open-source models via OpenRouter
 ```
 
 **4. Run**
@@ -260,8 +263,8 @@ agents:
   - id: default
     system_prompt: "You are a helpful assistant."
     model:
-      primary: "ollama/qwen3:8b"
-      fallbacks: ["openai/gpt-4o-mini"]
+      primary: "anthropic/claude-sonnet-4-5"
+      fallbacks: ["openai/gpt-4o-mini", "gemini/gemini-2.5-flash"]
       temperature: 0.7
       max_tokens: 8192
 
@@ -280,7 +283,10 @@ mcp:
       command: /path/to/mcp_server
 
 keys:
-  OPENROUTER_API_KEY: "..."
+  ANTHROPIC_API_KEY: "sk-ant-..."
+  OPENAI_API_KEY: "sk-..."
+  GEMINI_API_KEY: "..."
+  OPENROUTER_API_KEY: "sk-or-..."
 ```
 
 ## HTTP API

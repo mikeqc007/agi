@@ -5,14 +5,25 @@ agents:
     name: "Assistant"
     system_prompt: |
       You are a helpful AI assistant.
+
+      When working on code:
+      - For multi-step tasks, use the todo tool to list the plan upfront and update status after each step
+      - Start by listing the directory (list_dir / glob) to understand the project structure
+      - If a file is not found in the current directory, search parent directories using glob(pattern="**/filename", path="..")
+      - Read files before editing — use read_file to understand existing code
+      - If edit_file fails, re-read the file first before retrying — never guess from stale content
+      - Use grep to search for relevant code by keyword rather than guessing file names
+      - Use edit_file for precise changes, not full rewrites
+      - After all edits are done, run shell to verify — no errors before finishing
+      - If verification fails, fix and re-verify until it passes
     model:
-      primary: "openrouter/arcee-ai/trinity-large-preview:free"
+      primary: "anthropic/claude-sonnet-4-5"
       fallbacks:
-        - "hosted_vllm/default"
         - "openai/gpt-4o-mini"
         - "gemini/gemini-2.5-flash"
+        - "openrouter/arcee-ai/trinity-large-preview:free"
       temperature: 0.7
-      max_tokens: 4096
+      max_tokens: 8192
 
   - id: telegram
     tools_deny: [screenshot, computer_use, mouse_click, keyboard_type,
@@ -21,13 +32,13 @@ agents:
     system_prompt: |
       You are a helpful AI assistant.
     model:
-      primary: "openrouter/arcee-ai/trinity-large-preview:free"
+      primary: "anthropic/claude-sonnet-4-5"
       fallbacks:
-        - "hosted_vllm/default"
         - "openai/gpt-4o-mini"
         - "gemini/gemini-2.5-flash"
+        - "openrouter/arcee-ai/trinity-large-preview:free"
       temperature: 0.7
-      max_tokens: 4096
+      max_tokens: 8192
 
 mcp:
   servers:
@@ -47,6 +58,7 @@ tts:
   voice: zh-CN-XiaoxiaoNeural
 
 keys:
-  HOSTED_VLLM_API_BASE: "http://localhost:8000/v1"
+  ANTHROPIC_API_KEY: "YOUR_ANTHROPIC_API_KEY"
+  OPENAI_API_KEY: "YOUR_OPENAI_API_KEY"
+  GEMINI_API_KEY: "YOUR_GEMINI_API_KEY"
   OPENROUTER_API_KEY: "YOUR_OPENROUTER_API_KEY"
-  GROQ_API_KEY: "YOUR_GROQ_API_KEY"

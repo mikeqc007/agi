@@ -70,9 +70,10 @@ def run(
     tg_fh.setFormatter(formatter)
     logging.getLogger("agi.channels.telegram").addHandler(tg_fh)
 
-    for lib in ("httpx", "httpcore", "telegram", "apscheduler",
-                "litellm", "LiteLLM", "LiteLLM Proxy"):
+    for lib in ("httpx", "httpcore", "telegram", "apscheduler"):
         logging.getLogger(lib).setLevel(logging.WARNING)
+    for lib in ("litellm", "LiteLLM", "LiteLLM Proxy", "LiteLLM Router"):
+        logging.getLogger(lib).setLevel(logging.CRITICAL)
     # Some MCP servers print non-JSON logs to stdout; this avoids noisy JSON-RPC parse tracebacks.
     logging.getLogger("mcp.client.stdio").setLevel(logging.CRITICAL)
     # Suppress litellm's direct print() spam ("Provider List:", "Give Feedback", etc.)

@@ -265,6 +265,7 @@ async def complete_with_fallback(
     max_tokens: int = 4096,
     extra_params: dict | None = None,
     think_level: str = "off",
+    on_status: Any = None,
 ) -> Any:
     """Try models in order, falling back on rate-limit or server errors."""
     import litellm
@@ -316,12 +317,16 @@ async def complete_with_fallback(
             if code not in RETRYABLE_CODES and code != 0 and not is_context_exceeded:
                 raise
             if i < len(models) - 1:
-                logger.warning(
-                    "Model %s failed (code=%s): %s — trying next model", model, code, e
-                )
+                msg = f"[{model}] failed (code={code}): {str(e)[:120]} — trying next model"
+                logger.warning(msg)
+                if on_status:
+                    on_status(f"\033[90m{msg}\033[0m\n")
                 await asyncio.sleep(0.5)
             else:
-                logger.error("All models failed. Last error: %s", e)
+                msg = f"All models failed. Last error: {e}"
+                logger.error(msg)
+                if on_status:
+                    on_status(f"\033[91m{msg}\033[0m\n")
 
     raise last_exc or RuntimeError("All models failed")
 
