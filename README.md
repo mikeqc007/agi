@@ -231,7 +231,7 @@ Edit `agi.yaml` (or `~/.agi/config.yaml`) and set a model. The default uses Olla
 agents:
   - id: default
     model:
-      primary: "ollama/qwen3:8b"   # or "openai/gpt-4o-mini", "gemini/gemini-2.5-flash", etc.
+      primary: "openrouter/arcee-ai/trinity-large-preview:free"   # or "gemini/gemini-2.5-flash", "openai/gpt-4o-mini", etc.
 ```
 
 For OpenRouter, OpenAI, or Gemini, add the relevant keys under `keys:`:

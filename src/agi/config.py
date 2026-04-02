@@ -29,6 +29,7 @@ class AgentConfig(BaseModel):
     tools_deny: list[str] = Field(default_factory=list)
     compaction_threshold: float = 0.8   # fraction of max_tokens before compacting
     think_level: str = "off"            # off / minimal / low / medium / high
+    permission_mode: str = "allow"      # allow / read_only / workspace_write / prompt
 
 
 class TelegramConfig(BaseModel):
@@ -156,7 +157,7 @@ class AppConfig(BaseModel):
 def load_config(path: str | Path | None = None) -> AppConfig:
     if path is None:
         import os
-        env_path = os.environ.get("MINICLAW_CONFIG")
+        env_path = os.environ.get("AGI_CONFIG")
         if env_path:
             path = Path(env_path)
     if path is None:

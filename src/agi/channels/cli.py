@@ -110,12 +110,23 @@ class CLIChannel:
 
                 inbound.metadata["on_text"] = tracking_on_text
 
+                _t0 = time.time()
                 try:
                     reply = await self._dispatcher.submit_inbound(inbound)
                     if streamed:
                         print()  # newline after streamed output
                     elif reply:
                         print(reply)
+                    # Show token usage if DB available
+                    if self._db is not None:
+                        try:
+                            from agi.storage.db import usage_query
+                            _elapsed = time.time() - _t0
+                            stats = await usage_query(self._db, session_key=f"agent:{self._agent_id}:cli:direct:{self._peer_id}")
+                            if stats["calls"] > 0:
+                                print(f"\033[90m[tokens: {stats['prompt_tokens']}↑ {stats['completion_tokens']}↓  {_elapsed:.1f}s]\033[0m")
+                        except Exception:
+                            pass
                 except Exception as e:
                     print(f"\n\033[91mError: {e}\033[0m")
 
@@ -152,11 +163,29 @@ class CLIChannel:
                 await self._db.commit()
                 print(f"Cleared {deleted} cron session(s).")
 
+        elif name == "/usage":
+            if self._db is None:
+                print("Database not available.")
+            else:
+                try:
+                    from agi.storage.db import usage_query
+                    total = await usage_query(self._db)
+                    agent = await usage_query(self._db, agent_id=self._agent_id)
+                    print(
+                        f"Agent [{self._agent_id}]: "
+                        f"{agent['prompt_tokens']}↑ {agent['completion_tokens']}↓ "
+                        f"= {agent['total_tokens']} tokens ({agent['calls']} calls)\n"
+                        f"Total all agents: {total['total_tokens']} tokens"
+                    )
+                except Exception as e:
+                    print(f"Usage query failed: {e}")
+
         elif name == "/help":
             print(
                 "/clear        — clear conversation history\n"
                 "/clearcron    — clear cron session history\n"
                 "/agent <id>   — switch agent\n"
+                "/usage        — show token usage stats\n"
                 "/help         — show this help\n"
                 "exit / quit   — quit"
             )

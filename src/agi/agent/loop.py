@@ -11,6 +11,7 @@ from agi.agent.compaction import needs_compaction, compact
 from agi.agent.memory_flush import should_run_memory_flush, run_memory_flush
 from agi.agent.context import build_messages, build_user_message
 from agi.agent.model_fallback import complete_with_fallback, _is_ollama, normalize_messages_for_model
+from agi.agent.permissions import is_allowed_by_mode, needs_prompt, get_tool_level
 from agi.config import AgentConfig
 from agi.hooks.manager import make_event, trigger_hook
 from agi.storage.db import usage_record
@@ -78,6 +79,7 @@ class AgentLoop:
         agent_cfg: AgentConfig,
     ) -> str:
         app = self._app
+        _run_start_ms = int(time.time() * 1000)
 
         # Streaming callback — set by channel in msg.metadata
         on_text = msg.metadata.get("on_text")  # callable(chunk: str) | None
@@ -156,6 +158,15 @@ class AgentLoop:
         raw_content = (msg.content or "").strip()
         if not raw_content and not msg.attachments:
             return ""
+
+        # Fire message:start event
+        asyncio.ensure_future(trigger_hook(make_event(
+            "message", "start",
+            session_key=session.session_key,
+            agent_id=session.agent_id,
+            channel=session.channel,
+            content=msg.content,
+        )))
 
         user_msg = build_user_message(msg.content, msg.attachments)
         history = list(session.history)
@@ -330,6 +341,7 @@ class AgentLoop:
                     ]
 
             # Execute tools concurrently
+            permission_mode = getattr(agent_cfg, "permission_mode", "allow")
             tool_infos = []
             for tc in tool_calls_raw:
                 name = tc.function.name
@@ -342,6 +354,21 @@ class AgentLoop:
                 call_counter[loop_key] += 1
                 dead_loop = call_counter[loop_key] >= DEAD_LOOP_THRESHOLD
                 denied = not _is_allowed(name, agent_cfg, session.meta)
+
+                # Prompt mode: ask user before dangerous tools (CLI only)
+                if not denied and needs_prompt(name, permission_mode) and session.channel == "cli":
+                    brief = {k: v for k, v in args.items()
+                             if isinstance(v, (str, int, float, bool)) and len(str(v)) < 120}
+                    args_str = ", ".join(f"{k}={v!r}" for k, v in brief.items())
+                    if on_text:
+                        on_text(f"\n\033[93m[权限确认] {name}({args_str})\n允许执行? [y/N] \033[0m")
+                    try:
+                        answer = await asyncio.get_event_loop().run_in_executor(None, input)
+                        if answer.strip().lower() not in ("y", "yes", "是"):
+                            denied = True
+                    except Exception:
+                        denied = True
+
                 tool_infos.append((tc.id, name, args, dead_loop, denied))
 
             # Notify user of tool calls in progress
@@ -505,7 +532,19 @@ class AgentLoop:
         full_history = history + [user_msg] + working
         await app.session_store.replace_history(session.session_key, full_history)
 
-        return final_text or "(no response)"
+        _reply = final_text or "(no response)"
+
+        # Fire message:stop event
+        asyncio.ensure_future(trigger_hook(make_event(
+            "message", "stop",
+            session_key=session.session_key,
+            agent_id=session.agent_id,
+            channel=session.channel,
+            duration_ms=int(time.time() * 1000) - _run_start_ms,
+            reply=_reply,
+        )))
+
+        return _reply
 
 
 async def _stream_complete(
@@ -838,5 +877,8 @@ def _is_allowed(name: str, agent_cfg: AgentConfig, meta: dict) -> bool:
     if deny and name in deny:
         return False
     if allow and name not in allow:
+        return False
+    permission_mode = getattr(agent_cfg, "permission_mode", "allow")
+    if not is_allowed_by_mode(name, permission_mode):
         return False
     return True

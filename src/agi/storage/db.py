@@ -271,6 +271,40 @@ async def usage_record(
     await db.commit()
 
 
+async def usage_query(
+    db: aiosqlite.Connection,
+    agent_id: str | None = None,
+    session_key: str | None = None,
+    since_ms: int = 0,
+) -> dict:
+    """Return aggregated token usage. Filter by agent_id, session_key, or time range."""
+    conditions = ["1=1"]
+    params: list = []
+    if agent_id:
+        conditions.append("agent_id = ?")
+        params.append(agent_id)
+    if session_key:
+        conditions.append("session_key = ?")
+        params.append(session_key)
+    if since_ms:
+        conditions.append("created_at_ms >= ?")
+        params.append(since_ms)
+    where = " AND ".join(conditions)
+    async with db.execute(
+        f"SELECT SUM(prompt_tokens), SUM(completion_tokens), COUNT(*) FROM usage WHERE {where}",
+        params,
+    ) as cur:
+        row = await cur.fetchone()
+    prompt = int(row[0] or 0)
+    completion = int(row[1] or 0)
+    return {
+        "prompt_tokens": prompt,
+        "completion_tokens": completion,
+        "total_tokens": prompt + completion,
+        "calls": int(row[2] or 0),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Cron
 # ---------------------------------------------------------------------------

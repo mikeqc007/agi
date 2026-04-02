@@ -37,6 +37,7 @@ import agi.tools.browser_tool   # noqa: F401
 import agi.cron.cron_tool       # noqa: F401
 import agi.tools.skills         # noqa: F401
 import agi.tools.say            # noqa: F401
+import agi.tools.todo           # noqa: F401
 
 logger = logging.getLogger(__name__)
 

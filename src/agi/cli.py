@@ -156,8 +156,8 @@ agents:
       You are a helpful AI assistant. You can use tools to help the user.
       You have access to shell, file system, web search, memory, and computer automation.
     model:
-      primary: "ollama/qwen3:8b"
-      fallbacks: []
+      primary: "openrouter/arcee-ai/trinity-large-preview:free"
+      fallbacks: ["gemini/gemini-2.5-flash", "ollama/qwen3:8b"]
       temperature: 0.7
       max_tokens: 8192
     memory_enabled: true
