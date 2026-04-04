@@ -1,22 +1,16 @@
 # AGI — Autonomous Multi-Agent Runtime
 
-**Project Status:** Under active development.
+Python · MIT License
 
-AGI is a Python multi-agent runtime for long-horizon execution across every channel you already use — Telegram, Discord, Slack, WhatsApp, CLI, HTTP, and OpenAI-compatible APIs.
+AGI is an open-source multi-agent runtime that orchestrates subagents, memory, and persistent execution to handle almost anything — driven by extensible skills.
 
-It's not a research prototype. It's a runtime that coordinates agent loops, persistent memory, scheduled execution, and a unified capability layer spanning tools, skills, and MCP servers — designed to do real work, continuously.
+## One-Line Agent Setup
 
-## What It Can Do
+If you use Claude Code, Cursor, Windsurf, or another coding agent, hand it this prompt:
 
-- Run agents locally through an interactive CLI or remotely through Telegram, Discord, Slack, WhatsApp, HTTP, and OpenAI-compatible APIs
-- Perform coding tasks like a coding agent, similar to Claude Code: read files, search codebases, make precise edits, run and verify code through shell — all driven by the agent loop
-- Execute broader automation tasks through full Playwright browser automation — navigate, click, fill forms, intercept network requests, evaluate JavaScript, and manage tabs, cookies, and storage
-- Accept text and image inputs, including channel attachments and screenshots captured during tool execution
-- Route screenshot outputs back through the agent loop for vision-capable models or a dedicated `vision_model`
-- Transcribe Telegram voice messages into text when Whisper is configured
-- Return streamed text responses, with optional voice output via TTS
-- Delegate long-horizon tasks to subagents running in parallel, isolated sessions
-- Schedule recurring or one-shot automation jobs that survive restarts
+```
+Help me clone AGI if needed, then set it up for local development: git clone https://github.com/mikeqc007/agi && cd agi && pip install -e . && cp agi.yaml.example agi.yaml
+```
 
 ## Quickstart
 
@@ -28,31 +22,23 @@ cd agi
 pip install -e .
 ```
 
-**2. Create config**
-
-```bash
-agi init
-```
-
-Or copy the example into the project directory:
+**2. Configure**
 
 ```bash
 cp agi.yaml.example agi.yaml
 ```
 
-**3. Set your LLM**
-
-Edit `agi.yaml` (or `~/.agi/config.yaml`) and set a model:
+Edit `agi.yaml` and set a model:
 
 ```yaml
 agents:
   - id: default
     model:
-      primary: "anthropic/claude-sonnet-4-5"   # or "openai/gpt-4o", "gemini/gemini-2.5-flash", etc.
+      primary: "anthropic/claude-sonnet-4-5"
       fallbacks: ["openai/gpt-4o-mini", "gemini/gemini-2.5-flash"]
 ```
 
-Add the relevant API keys under `keys:`:
+Add your API keys:
 
 ```yaml
 keys:
@@ -62,122 +48,142 @@ keys:
   OPENROUTER_API_KEY: "sk-or-..."
 ```
 
-**4. Run**
+**3. Run**
 
 ```bash
-# Interactive CLI session
+# Interactive CLI
 agi run --cli
 
-# Full runtime
+# Full runtime (all channels)
 agi run
 ```
 
-**5. Verify**
+## Channels
 
-With `agi run --cli` you should see a prompt. If the HTTP gateway is enabled, check:
+AGI accepts tasks from every messaging platform you already use. Channels start automatically once configured — none of them require a public IP.
 
-```bash
-curl http://localhost:8090/health
+| Channel | Transport |
+|---|---|
+| Telegram | Bot API, long polling |
+| Discord | discord.py, mention-gated |
+| Slack | Events API |
+| WhatsApp | WhatsApp Business API |
+| Email | IMAP / SMTP |
+| Feishu / DingTalk / LINE | Webhook |
+| CLI | Interactive terminal |
+| HTTP Gateway | `POST /v1/messages` |
+| OpenAI API | `POST /v1/chat/completions` |
+
+Configure channels in `agi.yaml`:
+
+```yaml
+telegram:
+  token: $TELEGRAM_BOT_TOKEN
+  allowed_users: []          # empty = allow all
+
+slack:
+  bot_token: $SLACK_BOT_TOKEN
+  app_token: $SLACK_APP_TOKEN
+
+discord:
+  token: $DISCORD_BOT_TOKEN
+  allowed_users: []
 ```
 
-## From Chatbot to Agent
+## MCP Servers
 
-Most LLM wrappers give you a chat interface. AGI gives you a runtime.
+AGI supports configurable MCP servers to extend its capabilities. Each server launches as a subprocess over stdio, its tools are auto-discovered, and the resulting capabilities are exposed through the same OpenAI-compatible schema used by native tools.
 
-The difference is execution. When you ask AGI to research a topic, it searches the web and scrapes pages. When you ask it to fix a bug, it reads the codebase, makes precise edits, runs the tests, and iterates until they pass. When you ask it to monitor something overnight, it schedules a cron job, runs it while you sleep, and sends you the result in the morning.
+```yaml
+mcp:
+  servers:
+    - name: weather
+      command: /path/to/mcp_server
+```
 
-This is the difference between a model that describes actions and a runtime that takes them.
+## From Assistant to Agent
+
+AGI started as a personal automation runtime — but it quickly became something more. Developers have used it to run research pipelines, manage codebases across repositories, monitor services overnight, and coordinate multi-step workflows across Telegram, Discord, and the web. These weren't planned features. They emerged from giving an agent loop real execution power.
+
+That told us something important: what makes an agent useful isn't the model — it's the infrastructure around the model. The ability to search the web and read a page. To open a file, edit it precisely, and run the tests. To remember what happened last week. To schedule a job and come back with the result.
+
+So we built that infrastructure, carefully, in Python.
+
+AGI is not a wrapper. It's a runtime — one that gives agents everything they need to do real work: file system access, web search and scraping, browser automation, persistent memory, cron scheduling, and the ability to spawn subagents for tasks that are too large for a single turn.
 
 ## Core Capabilities
 
-### Tools
+### Skills and Tools
 
-AGI includes a comprehensive core toolset — web search, web scraping, file read/write/edit, shell execution, and full browser automation — and extends through MCP servers and custom skill scripts. Every tool follows the same OpenAI-compatible function schema, so they compose naturally and any tool can be replaced or extended.
+Skills are the reason AGI can do almost anything.
 
-The tool design philosophy is simple: tools should do one thing well. `web_search` finds; `web_fetch` retrieves and extracts clean text from any URL. Together they power deep research workflows without writing a single line of glue code. `shell` executes commands with approval gating; the `pty_*` family keeps persistent terminal sessions alive across turns. You can replace or add any of them.
+A standard agent skill is a structured capability module — a Markdown file that defines a workflow, best practices, and references to supporting scripts. You can add your own skills, replace built-in ones, or chain them into composite workflows.
+
+Skills are loaded on demand, not all at once. Only the skill the current task needs is injected into context. This keeps the context window focused and makes AGI work well even with smaller models.
 
 ```text
-Core toolset
-├── web_search           DuckDuckGo search with ranked results
-├── web_fetch            HTTP fetch + HTML-to-text extraction (web scraping)
-├── fs_read              Read files within the agent workspace
-├── fs_write             Write or overwrite files
-├── fs_list              List directory contents (recursive optional)
-├── fs_delete            Delete files
-├── shell                Execute shell commands with approval gating
-├── pty_spawn/read/write Persistent pseudo-terminal sessions across turns
-└── ports_list/probe     Inspect and probe running services
-
-Browser automation (14 tools)
-├── browser_navigate     Navigate to any URL
-├── browser_snapshot     Full DOM snapshot with accessibility tree
-├── browser_click        Click elements by selector or coordinates
-├── browser_fill         Fill form inputs
-├── browser_get_text     Extract visible text from elements
-├── browser_screenshot   Capture viewport or element screenshots
-├── browser_scroll       Scroll page or element
-├── browser_eval         Execute arbitrary JavaScript
-├── browser_tabs         Manage multiple browser tabs
-├── browser_cookies      Get, set, and clear cookies
-├── browser_storage      Read and write localStorage / sessionStorage
-├── browser_network_rule Intercept and mock network requests
-├── browser_wait         Wait for selectors, navigation, or network idle
-└── browser_download_wait Wait for file downloads to complete
-
-Agent orchestration
-├── spawn_agent          Spawn a subagent in an isolated session
-├── sessions_spawn       Create concurrent named agent sessions
-├── sessions_list/kill   Inspect and terminate sessions
-├── sessions_steer       Inject messages into running sessions
-└── watchdog_spawn/stop  Monitor and guard long-running processes
-
-Memory
-├── memory_search        Hybrid dense + sparse retrieval with temporal decay
-├── memory_store         Write memory as indexed Markdown
-└── memory_delete        Remove memory entries
-
-Scheduling
-├── cron_add             Add cron / interval / one-shot jobs
-├── cron_list            List scheduled jobs
-└── cron_remove          Remove jobs
-
-Skills & MCP
-├── skill_list           List available skills
-├── skill_run            Load and execute a skill
-├── mcp                  Call a tool on any configured MCP server
-└── mcp_list             List available MCP server tools
-
-Communication
-├── message_send         Send a message to any channel or peer
-└── speak                Convert text to speech (TTS output)
+skills/
+├── research/SKILL.md
+├── coding/SKILL.md
+└── your-custom-skill/
+    ├── SKILL.md
+    └── scripts/
+        └── helper.py          ← called from SKILL.md
 ```
+
+The tool design philosophy is the same. AGI includes a core toolset — web search, web scraping, file read/write/edit, shell execution, and full browser automation — and supports custom tools through MCP servers and skill scripts. You can replace or add any of them.
 
 ### Browser Automation
 
-AGI doesn't just fetch pages — it operates them. Fourteen browser tools built on Playwright give the agent full control over a real Chromium instance: navigate, interact with elements, intercept network traffic, evaluate JavaScript, capture screenshots, and manage tabs and storage. Vision-capable models receive screenshot outputs back into the agent loop and can reason about what they see.
+AGI doesn't just fetch pages — it operates them.
+
+A full Playwright-backed browser gives the agent real control over Chromium: navigate to any URL, click elements, fill forms, intercept network requests, run arbitrary JavaScript, capture screenshots, manage tabs and cookies. Vision-capable models receive screenshots directly into the agent loop and can reason about what they see before deciding what to do next.
 
 This is the difference between a web scraper and a browser agent.
 
-### Multi-Agent Delegation
+### Subagents
 
 Complex tasks rarely fit in a single turn. AGI breaks them down.
 
-The lead agent can dynamically spawn subagents — each running in its own isolated session with its own context, tool set, and termination condition. Subagents run concurrently and propagate their results back to the parent asynchronously. Runtime-level limits cap depth and concurrency to prevent runaway agent trees.
+The lead agent can dynamically spawn subagents — each running in its own isolated session with its own context, tool access, and termination condition. Subagents run concurrently and return structured results; the lead agent synthesizes them into a single coherent output.
+
+This is how AGI handles tasks that take minutes or hours: decompose, parallelize, converge.
 
 ```
 Lead agent
-├── spawns subagent A  (isolated session, concurrent)
-├── spawns subagent B  (isolated session, concurrent)
+├── subagent A  — isolated session, concurrent
+├── subagent B  — isolated session, concurrent
 └── synthesizes results → final response
 ```
 
-This is how AGI handles tasks that take minutes or hours: decompose into parallel, isolated workflows, then converge into a single coherent output.
+Recursive depth and concurrency are bounded by configurable limits, so delegation never becomes a runaway tree.
 
-### Persistent Memory
+### Execution Environment
+
+AGI doesn't just talk about actions — it takes them.
+
+Every session has access to a real execution environment: a workspace directory for reading and writing files, shell execution with approval gating, and persistent pseudo-terminal sessions that stay alive across turns. The agent can run code, verify the output, and iterate — all within the same agent loop.
+
+```text
+workspace/
+├── uploads/          ← files you provide
+├── workspace/        ← agent working directory
+└── outputs/          ← deliverables
+```
+
+This is the difference between a chatbot with tool access and an agent with an actual computer.
+
+### Context Engineering
+
+Each subagent runs in its own isolated context. It cannot see the lead agent's history or other subagents' work. This keeps subagents focused on their specific task without being distracted by irrelevant context from the broader session.
+
+During long sessions, AGI actively manages the context window — summarizing completed subtasks, offloading intermediate results to the file system, and compressing information that is no longer relevant. This allows it to sustain multi-step tasks that would otherwise exceed the context limit.
+
+### Long-Term Memory
 
 Most agents forget everything when the conversation ends. AGI remembers.
 
-Memory is written as Markdown files and indexed into SQLite, giving the agent a structured, queryable knowledge base that grows over time. Retrieval combines dense vector search (sqlite-vec cosine similarity), sparse BM25 (FTS5), reciprocal rank fusion, temporal decay, and MMR reranking — all in a single pipeline, with no external vector database required.
+Memory is written as Markdown files and indexed into SQLite. Retrieval combines dense vector search (sqlite-vec), sparse BM25 (FTS5), reciprocal rank fusion, temporal decay, and MMR reranking — all in a single local pipeline, with no external vector database required. The more you use it, the more it knows about your workflows, preferences, and context.
 
 ### Scheduling
 
@@ -186,26 +192,17 @@ Memory is written as Markdown files and indexed into SQLite, giving the agent a 
 - Standard cron syntax: `0 9 * * 1-5`
 - Interval shorthand: `interval:30m`, `interval:2h`
 - One-shot jobs: `once`
-- Jobs inject `InboundMessage` directly into the target session
-- Job state persists in SQLite across restarts
-- Schedules are manageable at runtime via the `cron_add` / `cron_list` / `cron_remove` tools
 
-### Skills
+Jobs inject an `InboundMessage` directly into the target session and persist in SQLite across restarts. The agent can add, list, and remove jobs at runtime through the cron tools.
 
-A skill is a structured capability module — a Markdown file that defines a workflow, best practices, and references to supporting scripts. Skills are loaded on demand, not all at once, so the context window stays focused on the current task.
+### Recommended Models
 
-```text
-skills/
-└── your-skill/
-    ├── SKILL.md          workflow instructions + {baseDir} substitution
-    └── scripts/          helper scripts invoked from SKILL.md
-```
+AGI is model-agnostic — it works with any LLM that implements an OpenAI-compatible API. It performs best on models that support:
 
-Skills are loaded from `./skills/` for shared project-level capabilities, or `state/agents/<id>/skills/` for per-agent overrides. When a task matches a skill, the agent calls `skill_run("name")`, receives the full instructions, and executes them using whatever tools are needed.
-
-### MCP Servers
-
-External MCP servers are configured in `agi.yaml` under `mcp.servers`. Each server launches as a subprocess over stdio, its tools are auto-discovered, and the resulting capabilities are exposed through the same OpenAI-compatible schema used by native tools. You can replace or extend any part of the toolset — native tools, skills, and MCP servers all compose through the same runtime model.
+- Long context windows (100k+ tokens) for multi-step research and coding tasks
+- Strong tool use for reliable function calling and structured output
+- Multimodal input for image understanding and browser screenshot reasoning
+- Reasoning capabilities for adaptive planning and task decomposition
 
 ## Architecture
 
@@ -222,43 +219,13 @@ Telegram / Discord / Slack / WhatsApp / CLI / HTTP / OpenAI API
              Tools        Memory      Skills / MCP
 ```
 
-The system separates ingress, orchestration, execution, and capability:
-
-- **GatewayDispatcher** normalizes all inbound traffic into a single `InboundMessage` format regardless of origin
-- **MessageQueue** decouples ingress from agent execution
-- **AgentLoop** owns reasoning, tool execution, turn control, and loop termination
-- **Tools / Memory / Skills / MCP** form the runtime capability substrate
-
-Each session is guarded by a per-session `asyncio.Lock`, keeping execution scoped to one turn at a time per session.
-
-| Channel | Description |
-|---|---|
-| Telegram | Bot API, long polling |
-| Discord | discord.py, mention-gated |
-| Slack | Events API |
-| WhatsApp | WhatsApp Business API |
-| Email | IMAP/SMTP |
-| Feishu / DingTalk / LINE | Webhook |
-| CLI | Interactive terminal session |
-| HTTP Gateway | Unified REST endpoint (`POST /v1/messages`) |
-| OpenAI API | Compatible endpoint (`POST /v1/chat/completions`) |
-
-## Execution Model
-
-Each session runs an isolated ReAct loop:
-
-1. Build context — system prompt, memory injection, and history compaction
-2. Stream LLM output
-3. Execute tool calls concurrently and collect results
-4. Detect dead-loops from repeated identical tool patterns
-5. Iterate until `end_turn` or the configured iteration limit
+All inbound messages are normalized into a single `InboundMessage` format regardless of origin. Each session is guarded by a per-session `asyncio.Lock`, keeping execution scoped to one turn at a time per session.
 
 ## Hooks
 
-`HookManager` supports lifecycle hooks that fire at key points in the agent loop:
+`HookManager` supports lifecycle hooks:
 
-- `on_startup` — runtime initialization
-- `on_shutdown` — graceful teardown
+- `on_startup` / `on_shutdown`
 - `on_message` — every inbound message
 - `on_reply` — every outbound reply
 - `on_tool_call` — every tool invocation
@@ -274,10 +241,6 @@ agents:
       fallbacks: ["openai/gpt-4o-mini", "gemini/gemini-2.5-flash"]
       temperature: 0.7
       max_tokens: 8192
-
-telegram:
-  token: "YOUR_BOT_TOKEN"
-  allowed_users: [123456789]    # empty = allow all
 
 gateway:
   enabled: false
@@ -298,7 +261,7 @@ keys:
 
 ## HTTP API
 
-### OpenAI-compatible
+### OpenAI-compatible endpoint
 
 ```bash
 curl http://localhost:8090/v1/chat/completions \
@@ -324,3 +287,7 @@ curl http://localhost:8090/v1/messages \
 - Python 3.11+
 - SQLite with sqlite-vec extension
 - Playwright (for browser tools): `playwright install chromium`
+
+## License
+
+MIT
