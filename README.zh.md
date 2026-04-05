@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Python · MIT License
+Python
 
 AGI 是一个开源多智能体运行时，通过协调子智能体、持久化记忆和持续执行，完成几乎任何任务——由可扩展的技能驱动。
 
@@ -259,6 +259,3 @@ curl http://localhost:8090/v1/messages \
 - SQLite with sqlite-vec extension
 - Playwright（浏览器工具）：`playwright install chromium`
 
-## 许可证
-
-MIT
