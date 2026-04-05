@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Python · MIT License
+Python
 
 AGI is an open-source multi-agent runtime that orchestrates subagents, memory, and persistent execution to handle almost anything — driven by extensible skills.
 
@@ -321,6 +321,3 @@ curl http://localhost:8090/v1/messages \
 - SQLite with sqlite-vec extension
 - Playwright (for browser tools): `playwright install chromium`
 
-## License
-
-MIT
