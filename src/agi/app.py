@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from agi.agent.loop import AgentLoop
+from agi.agent import tracer as _tracer
 from agi.channels.dispatcher import GatewayDispatcher
 from agi.channels.gateway import GatewayChannel
 from agi.agent.sessions import SessionStore
@@ -69,6 +70,9 @@ class AppRuntime:
         # Database
         self.db = await open_db(self.cfg.resolved_db_path())
         logger.info("Database opened: %s", self.cfg.resolved_db_path())
+
+        # Tracer
+        _tracer.init(self.cfg.resolved_logs_dir())
 
         # Core services
         self.session_store = SessionStore(self.db)

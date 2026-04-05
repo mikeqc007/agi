@@ -12,6 +12,7 @@ from agi.agent.memory_flush import should_run_memory_flush, run_memory_flush
 from agi.agent.context import build_messages, build_user_message
 from agi.agent.model_fallback import complete_with_fallback, _is_ollama, normalize_messages_for_model
 from agi.agent.permissions import is_allowed_by_mode, needs_prompt, get_tool_level
+from agi.agent import tracer as _tracer
 from agi.config import AgentConfig
 from agi.hooks.manager import make_event, trigger_hook
 from agi.storage.db import usage_record
@@ -87,6 +88,8 @@ class AgentLoop:
 
         # Streaming callback — set by channel in msg.metadata
         on_text = msg.metadata.get("on_text")  # callable(chunk: str) | None
+        # Tool result callback — set by subagent spawner to record trajectory
+        on_tool_result = msg.metadata.get("on_tool_result")  # callable(tool, args, result) | None
 
         # Build tool context
         ctx = ToolContext(
@@ -172,6 +175,16 @@ class AgentLoop:
             content=msg.content,
         )))
 
+        _tracer.emit(
+            "turn.start",
+            session_key=session.session_key,
+            agent_id=session.agent_id,
+            channel=session.channel,
+            sender=msg.sender,
+            content=raw_content[:500],
+            model=models[0] if models else "",
+        )
+
         user_msg = build_user_message(msg.content, msg.attachments)
         history = list(session.history)
 
@@ -245,6 +258,7 @@ class AgentLoop:
 
             if text:
                 final_text = text
+                _tracer.emit("turn.think", session_key=session.session_key, think=text)
 
             # Record usage
             if usage:
@@ -411,7 +425,7 @@ class AgentLoop:
                     raise _res
 
             pending_images: list[_ImageResult] = []
-            for (tid, name, args, _, _), res in zip(tool_infos, results):
+            for (tid, name, args, dead, denied), res in zip(tool_infos, results):
                 if isinstance(res, Exception):
                     res = {"error": str(res)}
                 if isinstance(res, _ImageResult):
@@ -423,6 +437,11 @@ class AgentLoop:
                     # user message with image so any vision model can see the screenshot.
                     working.append(_tool_result(tid, name, res.text))
                     pending_images.append(res)
+                    tool_res_for_trace = {"type": "screenshot", "mime_type": res.mime_type}
+                    _tracer.emit("tool.call", session_key=session.session_key, tool=name, args=args)
+                    _tracer.emit("tool.result", session_key=session.session_key, result=tool_res_for_trace)
+                    if on_tool_result:
+                        on_tool_result(name, args, tool_res_for_trace)
                 else:
                     err = _tool_error_text(res)
                     if err:
@@ -434,6 +453,11 @@ class AgentLoop:
                         tool_success_count += 1
                         consecutive_failures = 0
                     working.append(_tool_result(tid, name, res))
+                    tool_res_for_trace = res if isinstance(res, (dict, list)) else str(res)
+                    _tracer.emit("tool.call", session_key=session.session_key, tool=name, args=args)
+                    _tracer.emit("tool.result", session_key=session.session_key, result=tool_res_for_trace)
+                    if on_tool_result:
+                        on_tool_result(name, args, tool_res_for_trace)
 
             # Abort if too many consecutive tool failures — model is stuck
             if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
@@ -444,6 +468,50 @@ class AgentLoop:
                 full_history = history + [user_msg] + working
                 await app.session_store.replace_history(session.session_key, full_history)
                 return fail_msg
+
+            # If any spawn_agent calls are still pending, wait for ALL of them now
+            # and inject their combined results as a single user message so the LLM
+            # can synthesize once instead of once per subagent.
+            mgr = getattr(app, "subagent_manager", None)
+            if mgr and mgr.has_pending(session.session_key):
+                sub_results = await mgr.wait_all(session.session_key, on_text=on_text)
+                # Strip spawn_agent tool calls and their pending results from working —
+                # the real results are injected below as a single user message.
+                spawn_tc_ids = {
+                    tc["id"]
+                    for msg in working
+                    if msg.get("role") == "assistant"
+                    for tc in (msg.get("tool_calls") or [])
+                    if tc.get("function", {}).get("name") == "spawn_agent"
+                }
+                if spawn_tc_ids:
+                    # Only remove the pending tool result messages — keep the
+                    # assistant tool_calls message so history stays coherent.
+                    working = [
+                        m for m in working
+                        if not (m.get("role") == "tool" and m.get("tool_call_id") in spawn_tc_ids)
+                    ]
+
+                if sub_results:
+                    lines = ["[子任务结果]"]
+                    for r in sub_results:
+                        label = r.get("label") or r["run_id"]
+                        lines.append(f"\n## {label}")
+                        # Include tool trajectory (raw results, no think text)
+                        for step in r.get("trajectory", []):
+                            tool_name = step.get("tool", "")
+                            tool_args = json.dumps(step.get("args", {}), ensure_ascii=False)
+                            tool_res = step.get("result", "")
+                            if isinstance(tool_res, (dict, list)):
+                                tool_res = json.dumps(tool_res, ensure_ascii=False)
+                            lines.append(f"{tool_name}({tool_args}) →\n{tool_res}")
+                        if r["status"] == "ok":
+                            lines.append(f"\n结论: {r['result']}")
+                        else:
+                            lines.append(f"\n失败: {r.get('error', r['status'])}")
+                    working.append({"role": "user", "content": "\n".join(lines)})
+                    for r in sub_results:
+                        _tracer.emit("tool.result", session_key=session.session_key, result=r)
 
             # Inject screenshots after tool results (role order: tool... → user).
             # If a separate vision_model is configured, call it to describe the image
@@ -563,6 +631,7 @@ class AgentLoop:
         await app.session_store.replace_history(session.session_key, full_history)
 
         _reply = final_text or "(no response)"
+        _duration_ms = int(time.time() * 1000) - _run_start_ms
 
         # Fire message:stop event
         asyncio.ensure_future(trigger_hook(make_event(
@@ -570,9 +639,19 @@ class AgentLoop:
             session_key=session.session_key,
             agent_id=session.agent_id,
             channel=session.channel,
-            duration_ms=int(time.time() * 1000) - _run_start_ms,
+            duration_ms=_duration_ms,
             reply=_reply,
         )))
+
+        _tracer.emit(
+            "turn.end",
+            session_key=session.session_key,
+            agent_id=session.agent_id,
+            duration_ms=_duration_ms,
+            tool_calls=tool_success_count,
+            tool_failures=len(tool_failures),
+            reply=_reply,
+        )
 
         return _reply
 
