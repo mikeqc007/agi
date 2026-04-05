@@ -197,7 +197,7 @@ All inbound messages are normalized into a single `InboundMessage` format regard
 agents:
   - id: default
     system_prompt: "You are a helpful AI assistant."
-    # tools_deny: [screenshot, computer_use]   # optional: block specific tools
+    tools_deny: []     # optional — e.g. [shell, browser] to restrict tool access
     model:
       primary: "anthropic/claude-sonnet-4-5"
       fallbacks:
