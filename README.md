@@ -131,13 +131,14 @@ For desktop-level automation, AGI also supports screenshot capture, mouse contro
 
 Complex tasks rarely fit in a single turn. AGI breaks them down.
 
-The lead agent can dynamically spawn subagents — each running in its own isolated session with its own context, tool access, and termination condition. Subagents run concurrently and return structured results; the lead agent synthesizes them into a single coherent output.
+The lead agent spawns subagents concurrently — each runs in its own isolated session with its own context, tool access, and termination condition. Once all subagents finish, their results are collected together and injected into the lead agent's context as a single message, including the raw tool call outputs from each subagent's execution. The lead agent then produces one final synthesized response.
 
 ```
 Lead agent
-├── subagent A  — isolated session, concurrent
-├── subagent B  — isolated session, concurrent
-└── synthesizes results → final response
+├── spawn subagent A  ──────────────────────┐ concurrent
+├── spawn subagent B  ──────────────────────┤ concurrent
+│                                           ↓
+└── wait for all → inject results + tool data → single final response
 ```
 
 ### Long-Term Memory
@@ -164,6 +165,68 @@ When Whisper is configured, AGI transcribes Telegram voice messages into text be
 tts:
   provider: edge
   voice: zh-CN-XiaoxiaoNeural
+```
+
+### Execution Traces
+
+Every turn is recorded as a structured JSON file under `logs/traces/{date}/{session_key}/`. Each file captures the full execution of one turn: the user query, the main agent's tool calls and reasoning, each subagent's tool trajectory and result, the final answer, and diagnostics.
+
+```
+logs/traces/2026-04-04/default_cli_direct_user1/
+└── turn-a1b2c3d4.json
+```
+
+```json
+{
+  "meta": { "timestamp": "...", "session_key": "...", "turn_id": "turn-a1b2c3d4" },
+  "turn": {
+    "query": "...",
+    "main": {
+      "agent": "default",
+      "model": "anthropic/claude-sonnet-4-5",
+      "trajectory": [
+        {
+          "iter": 1,
+          "think": "...",
+          "action": { "type": "tool_call", "tool": "spawn_agent", "args": { "task": "..." } },
+          "tool_result": { "status": "pending", "run_id": "sub-abc" }
+        }
+      ]
+    },
+    "subagents": [
+      {
+        "run_id": "sub-abc",
+        "label": "...",
+        "assigned_task": "...",
+        "trajectory": [
+          {
+            "iter": 1,
+            "think": "...",
+            "action": { "type": "tool_call", "tool": "web_search", "args": { "query": "..." } },
+            "tool_result": { "title": "...", "url": "..." }
+          },
+          {
+            "iter": 2,
+            "think": "...",
+            "action": { "type": "finish", "result": "..." },
+            "tool_result": null
+          }
+        ],
+        "final_result": "...",
+        "status": "ok",
+        "elapsed_ms": 3200
+      }
+    ],
+    "answer": "..."
+  },
+  "diagnostics": {
+    "duration_ms": 6500,
+    "total_tool_calls": 3,
+    "subagent_count": 2,
+    "no_tool_subagents": [],
+    "error_subagents": []
+  }
+}
 ```
 
 ### Recommended Models
